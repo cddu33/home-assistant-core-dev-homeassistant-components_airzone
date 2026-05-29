@@ -15,7 +15,11 @@
       "Bash(python -c \"import json; d=json.load\\(open\\('manifest.json', encoding='utf-8'\\)\\); print\\('manifest.json OK — version:', d['version']\\)\")",
       "Bash(python -c \"import json; json.load\\(open\\('translations/en.json', encoding='utf-8'\\)\\); json.load\\(open\\('translations/fr.json', encoding='utf-8'\\)\\); print\\('translations/en.json + fr.json : JSON valide'\\)\")",
       "Bash(python -c 'import json,sys; json.load\\(open\\('\\\\''__TRACKED_VAR__'\\\\'', encoding='\\\\''utf-8'\\\\''\\)\\); print\\('\\\\''OK: __TRACKED_VAR__'\\\\''\\)')",
-      "Bash(python -m py_compile climate.py sensor.py binary_sensor.py select.py switch.py config_flow.py entity.py)"
+      "Bash(python -m py_compile climate.py sensor.py binary_sensor.py select.py switch.py config_flow.py entity.py)",
+      "Bash(python -c 'import json; json.load\\(open\\('\\\\''__TRACKED_VAR__'\\\\'', encoding='\\\\''utf-8'\\\\''\\)\\); print\\('\\\\''JSON OK: __TRACKED_VAR__'\\\\''\\)')",
+      "Bash(python -m py_compile select.py sensor.py)",
+      "Bash(python -c 'import json; json.load\\(open\\('\\\\''__TRACKED_VAR__'\\\\'', encoding='\\\\''utf-8'\\\\''\\)\\)')",
+      "Bash(python -m py_compile climate.py select.py)"
     ]
   }
 }

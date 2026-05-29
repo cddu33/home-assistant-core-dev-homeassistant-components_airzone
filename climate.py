@@ -180,10 +180,15 @@ class AirzoneClimate(AirzoneZoneEntity, ClimateEntity):
         self._attr_temperature_unit = TEMP_UNIT_LIB_TO_HASS[
             self.get_airzone_value(AZD_TEMP_UNIT)
         ]
-        _attr_hvac_modes = [
-            HVAC_MODE_LIB_TO_HASS[mode] for mode in self.get_airzone_value(AZD_MODES)
-        ]
-        self._attr_hvac_modes = list(dict.fromkeys(_attr_hvac_modes))
+        self._is_master = bool(self.get_airzone_value(AZD_MASTER))
+        if self._is_master:
+            _attr_hvac_modes = [
+                HVAC_MODE_LIB_TO_HASS[mode]
+                for mode in self.get_airzone_value(AZD_MODES)
+            ]
+            self._attr_hvac_modes = list(dict.fromkeys(_attr_hvac_modes))
+        else:
+            self._update_slave_hvac_modes()
         if (
             self.get_airzone_value(AZD_SPEED) is not None
             and self.get_airzone_value(AZD_SPEEDS) is not None
@@ -195,6 +200,18 @@ class AirzoneClimate(AirzoneZoneEntity, ClimateEntity):
             )
 
         self._async_update_attrs()
+
+    def _update_slave_hvac_modes(self) -> None:
+        """Restrict slave-zone modes to OFF and the current system mode.
+
+        Slave zones cannot change the system mode, so only expose OFF plus the
+        active mode (so the zone can still be turned on/off).
+        """
+        modes = [HVACMode.OFF]
+        current = HVAC_MODE_LIB_TO_HASS.get(self.get_airzone_value(AZD_MODE))
+        if current is not None and current != HVACMode.OFF:
+            modes.append(current)
+        self._attr_hvac_modes = modes
 
     def _set_fan_speeds(self) -> None:
         self._attr_supported_features |= ClimateEntityFeature.FAN_MODE
@@ -282,6 +299,8 @@ class AirzoneClimate(AirzoneZoneEntity, ClimateEntity):
     @callback
     def _async_update_attrs(self) -> None:
         """Update climate attributes."""
+        if not self._is_master:
+            self._update_slave_hvac_modes()
         self._attr_current_temperature = self.get_airzone_value(AZD_TEMP)
         self._attr_current_humidity = self.get_airzone_value(AZD_HUMIDITY)
         self._attr_hvac_action = HVAC_ACTION_LIB_TO_HASS[

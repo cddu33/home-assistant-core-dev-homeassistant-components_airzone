@@ -63,8 +63,17 @@
       }
     },
     "select": {
+      "all_zones_sleep": {
+        "name": "Veille (toutes les zones)",
+        "state": {
+          "30m": "30 minutes",
+          "60m": "60 minutes",
+          "90m": "90 minutes",
+          "off": "Désactivé"
+        }
+      },
       "cold_stage": {
-        "name": "Étage de froid",
+        "name": "Type d'émission (froid)",
         "state": {
           "air": "Air",
           "combined": "Combiné",
@@ -90,7 +99,7 @@
         }
       },
       "heat_stage": {
-        "name": "Étage de chaud",
+        "name": "Type d'émission (chaud)",
         "state": {
           "air": "Air",
           "combined": "Combiné",

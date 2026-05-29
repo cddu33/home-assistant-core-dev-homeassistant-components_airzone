@@ -63,8 +63,17 @@
       }
     },
     "select": {
+      "all_zones_sleep": {
+        "name": "Sleep (all zones)",
+        "state": {
+          "30m": "30 minutes",
+          "60m": "60 minutes",
+          "90m": "90 minutes",
+          "off": "Off"
+        }
+      },
       "cold_stage": {
-        "name": "Cold stage",
+        "name": "Cooling emission type",
         "state": {
           "air": "Air",
           "combined": "Combined",
@@ -90,7 +99,7 @@
         }
       },
       "heat_stage": {
-        "name": "Heat stage",
+        "name": "Heating emission type",
         "state": {
           "air": "Air",
           "combined": "Combined",

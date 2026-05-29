@@ -63,8 +63,17 @@
       }
     },
     "select": {
+      "all_zones_sleep": {
+        "name": "Sleep (all zones)",
+        "state": {
+          "30m": "[%key:component::airzone::entity::select::sleep_times::state::30m%]",
+          "60m": "[%key:component::airzone::entity::select::sleep_times::state::60m%]",
+          "90m": "[%key:component::airzone::entity::select::sleep_times::state::90m%]",
+          "off": "[%key:common::state::off%]"
+        }
+      },
       "cold_stage": {
-        "name": "Cold stage",
+        "name": "Cooling emission type",
         "state": {
           "air": "Air",
           "combined": "Combined",
@@ -90,7 +99,7 @@
         }
       },
       "heat_stage": {
-        "name": "Heat stage",
+        "name": "Heating emission type",
         "state": {
           "air": "[%key:component::airzone::entity::select::cold_stage::state::air%]",
           "combined": "[%key:component::airzone::entity::select::cold_stage::state::combined%]",
