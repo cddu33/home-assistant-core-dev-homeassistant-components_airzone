@@ -66,11 +66,13 @@ ZONE_BINARY_SENSOR_TYPES: Final[tuple[AirzoneBinarySensorEntityDescription, ...]
     ),
     AirzoneBinarySensorEntityDescription(
         device_class=BinarySensorDeviceClass.RUNNING,
+        entity_registry_enabled_default=False,
         key=AZD_COLD_DEMAND,
         translation_key="cold_demand",
     ),
     AirzoneBinarySensorEntityDescription(
         device_class=BinarySensorDeviceClass.RUNNING,
+        entity_registry_enabled_default=False,
         key=AZD_DEMAND,
         translation_key="demand",
     ),
@@ -81,6 +83,7 @@ ZONE_BINARY_SENSOR_TYPES: Final[tuple[AirzoneBinarySensorEntityDescription, ...]
     ),
     AirzoneBinarySensorEntityDescription(
         device_class=BinarySensorDeviceClass.RUNNING,
+        entity_registry_enabled_default=False,
         key=AZD_HEAT_DEMAND,
         translation_key="heat_demand",
     ),

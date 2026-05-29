@@ -341,6 +341,12 @@ class AirzoneZoneSelect(AirzoneZoneEntity, AirzoneBaseSelect):
             zone_data, description.options_dict
         )
 
+        # A select with a single (or no) option cannot be acted upon, so
+        # disable it by default (e.g. cold/heat stage when the zone only
+        # exposes one stage). It can still be enabled manually.
+        if len(self._attr_options) <= 1:
+            self._attr_entity_registry_enabled_default = False
+
         self.values_dict = {v: k for k, v in description.options_dict.items()}
 
         self._async_update_attrs()

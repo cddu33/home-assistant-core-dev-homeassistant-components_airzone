@@ -1,0 +1,154 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "L'appareil est déjà configuré"
+    },
+    "error": {
+      "cannot_connect": "Échec de connexion",
+      "invalid_system_id": "Identifiant de système Airzone invalide"
+    },
+    "step": {
+      "discovered_connection": {
+        "data": {
+          "host": "Hôte",
+          "id": "Identifiant du système",
+          "port": "Port"
+        }
+      },
+      "user": {
+        "data": {
+          "host": "Hôte",
+          "id": "Identifiant du système",
+          "port": "Port"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "scan_interval": "Intervalle de mise à jour"
+        },
+        "data_description": {
+          "scan_interval": "Fréquence d'interrogation de l'appareil Airzone, en secondes (minimum 10, défaut 60, recommandé 30)."
+        }
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "air_demand": {
+        "name": "Demande d'air"
+      },
+      "anti_freeze": {
+        "name": "Antigel"
+      },
+      "cold_demand": {
+        "name": "Demande de froid"
+      },
+      "demand": {
+        "name": "Demande"
+      },
+      "floor_demand": {
+        "name": "Demande au sol"
+      },
+      "heat_demand": {
+        "name": "Demande de chaleur"
+      }
+    },
+    "select": {
+      "cold_stage": {
+        "name": "Étage de froid",
+        "state": {
+          "air": "Air",
+          "combined": "Combiné",
+          "radiant": "Rayonnant"
+        }
+      },
+      "grille_angles": {
+        "name": "Angle de froid",
+        "state": {
+          "40deg": "40°",
+          "45deg": "45°",
+          "50deg": "50°",
+          "90deg": "90°"
+        }
+      },
+      "heat_angles": {
+        "name": "Angle de chaud",
+        "state": {
+          "40deg": "40°",
+          "45deg": "45°",
+          "50deg": "50°",
+          "90deg": "90°"
+        }
+      },
+      "heat_stage": {
+        "name": "Étage de chaud",
+        "state": {
+          "air": "Air",
+          "combined": "Combiné",
+          "radiant": "Rayonnant"
+        }
+      },
+      "modes": {
+        "name": "Mode",
+        "state": {
+          "cool": "Refroidissement",
+          "dry": "Déshumidification",
+          "fan": "Ventilation",
+          "heat": "Chauffage",
+          "heat_cool": "Chaud/Froid",
+          "stop": "Arrêt"
+        }
+      },
+      "q_adapt": {
+        "name": "Q-Adapt",
+        "state": {
+          "maximum": "Maximum",
+          "minimum": "Minimum",
+          "power": "Puissance",
+          "silence": "Silence",
+          "standard": "Standard"
+        }
+      },
+      "sleep_times": {
+        "name": "Veille",
+        "state": {
+          "30m": "30 minutes",
+          "60m": "60 minutes",
+          "90m": "90 minutes",
+          "off": "Désactivé"
+        }
+      }
+    },
+    "sensor": {
+      "eco_adapt": {
+        "name": "Eco-Adapt",
+        "state": {
+          "a": "A",
+          "a_p": "A+",
+          "a_pp": "A++",
+          "manual": "Manuel",
+          "off": "Désactivé"
+        }
+      },
+      "power": {
+        "name": "Puissance"
+      },
+      "rssi": {
+        "name": "RSSI"
+      },
+      "thermostat_signal": {
+        "name": "Force du signal"
+      },
+      "wifi_channel": {
+        "name": "Canal Wi-Fi"
+      },
+      "wifi_quality": {
+        "name": "Qualité Wi-Fi"
+      }
+    }
+  }
+}

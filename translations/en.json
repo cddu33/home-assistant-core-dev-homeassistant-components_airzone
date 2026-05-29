@@ -1,0 +1,154 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "Device is already configured"
+    },
+    "error": {
+      "cannot_connect": "Failed to connect",
+      "invalid_system_id": "Invalid Airzone System ID"
+    },
+    "step": {
+      "discovered_connection": {
+        "data": {
+          "host": "Host",
+          "id": "System ID",
+          "port": "Port"
+        }
+      },
+      "user": {
+        "data": {
+          "host": "Host",
+          "id": "System ID",
+          "port": "Port"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "scan_interval": "Update interval"
+        },
+        "data_description": {
+          "scan_interval": "How often to poll the Airzone device, in seconds (minimum 10, default 60, recommended 30)."
+        }
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "air_demand": {
+        "name": "Air demand"
+      },
+      "anti_freeze": {
+        "name": "Anti-freeze"
+      },
+      "cold_demand": {
+        "name": "Cold demand"
+      },
+      "demand": {
+        "name": "Demand"
+      },
+      "floor_demand": {
+        "name": "Floor demand"
+      },
+      "heat_demand": {
+        "name": "Heat demand"
+      }
+    },
+    "select": {
+      "cold_stage": {
+        "name": "Cold stage",
+        "state": {
+          "air": "Air",
+          "combined": "Combined",
+          "radiant": "Radiant"
+        }
+      },
+      "grille_angles": {
+        "name": "Cold angle",
+        "state": {
+          "40deg": "40°",
+          "45deg": "45°",
+          "50deg": "50°",
+          "90deg": "90°"
+        }
+      },
+      "heat_angles": {
+        "name": "Heat angle",
+        "state": {
+          "40deg": "40°",
+          "45deg": "45°",
+          "50deg": "50°",
+          "90deg": "90°"
+        }
+      },
+      "heat_stage": {
+        "name": "Heat stage",
+        "state": {
+          "air": "Air",
+          "combined": "Combined",
+          "radiant": "Radiant"
+        }
+      },
+      "modes": {
+        "name": "Mode",
+        "state": {
+          "cool": "Cool",
+          "dry": "Dry",
+          "fan": "Fan only",
+          "heat": "Heat",
+          "heat_cool": "Heat/cool",
+          "stop": "Stop"
+        }
+      },
+      "q_adapt": {
+        "name": "Q-Adapt",
+        "state": {
+          "maximum": "Maximum",
+          "minimum": "Minimum",
+          "power": "Power",
+          "silence": "Silence",
+          "standard": "Standard"
+        }
+      },
+      "sleep_times": {
+        "name": "Sleep",
+        "state": {
+          "30m": "30 minutes",
+          "60m": "60 minutes",
+          "90m": "90 minutes",
+          "off": "Off"
+        }
+      }
+    },
+    "sensor": {
+      "eco_adapt": {
+        "name": "Eco-Adapt",
+        "state": {
+          "a": "A",
+          "a_p": "A+",
+          "a_pp": "A++",
+          "manual": "Manual",
+          "off": "Off"
+        }
+      },
+      "power": {
+        "name": "Power"
+      },
+      "rssi": {
+        "name": "RSSI"
+      },
+      "thermostat_signal": {
+        "name": "Signal strength"
+      },
+      "wifi_channel": {
+        "name": "Wi-Fi channel"
+      },
+      "wifi_quality": {
+        "name": "Wi-Fi quality"
+      }
+    }
+  }
+}
