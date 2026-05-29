@@ -57,6 +57,11 @@
         "name": "Heat demand"
       }
     },
+    "climate": {
+      "all_zones": {
+        "name": "All zones"
+      }
+    },
     "select": {
       "cold_stage": {
         "name": "Cold stage",

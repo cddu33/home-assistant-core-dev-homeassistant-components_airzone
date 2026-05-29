@@ -57,6 +57,11 @@
         "name": "Demande de chaleur"
       }
     },
+    "climate": {
+      "all_zones": {
+        "name": "Toutes les zones"
+      }
+    },
     "select": {
       "cold_stage": {
         "name": "Étage de froid",
