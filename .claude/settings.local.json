@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c \"import aioairzone, os; print\\(os.path.dirname\\(aioairzone.__file__\\)\\)\")",
+      "Bash(pip show *)",
+      "Bash(where python *)",
+      "Bash(where python3 *)",
+      "Bash(py --version)",
+      "Read(//c/Users/cdibo/**)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(python -c \"import json; json.load\\(open\\('strings.json', encoding='utf-8'\\)\\); print\\('strings.json: JSON valide'\\)\")",
+      "Bash(python -c \"import json; json.load\\(open\\('manifest.json', encoding='utf-8'\\)\\); print\\('manifest.json: JSON valide'\\)\")",
+      "WebFetch(domain:pypi.org)",
+      "Bash(python -c \"import json; json.load\\(open\\('strings.json', encoding='utf-8'\\)\\); print\\('strings.json OK'\\)\")"
+    ]
+  }
+}

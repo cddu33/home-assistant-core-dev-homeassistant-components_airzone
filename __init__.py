@@ -91,6 +91,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: AirzoneConfigEntry) -> b
 
     entry.runtime_data = coordinator
 
+    entry.async_on_unload(entry.add_update_listener(_async_options_updated))
+
     device_registry = dr.async_get(hass)
 
     ws_data: dict[str, Any] | None = coordinator.data.get(AZD_WEBSERVER)
@@ -110,6 +112,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: AirzoneConfigEntry) -> b
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     return True
+
+
+async def _async_options_updated(
+    hass: HomeAssistant, entry: AirzoneConfigEntry
+) -> None:
+    """Reload the config entry when its options are updated."""
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: AirzoneConfigEntry) -> bool:

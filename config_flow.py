@@ -1,5 +1,7 @@
 """Config flow for Airzone."""
 
+from __future__ import annotations
+
 import logging
 from typing import Any
 
@@ -8,14 +10,25 @@ from aioairzone.exceptions import AirzoneError, InvalidSystem
 from aioairzone.localapi import AirzoneLocalApi, ConnectionOptions
 import voluptuous as vol
 
-from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
-from homeassistant.const import CONF_HOST, CONF_ID, CONF_PORT
+from homeassistant.config_entries import (
+    ConfigEntry,
+    ConfigFlow,
+    ConfigFlowResult,
+    OptionsFlow,
+)
+from homeassistant.const import CONF_HOST, CONF_ID, CONF_PORT, CONF_SCAN_INTERVAL
+from homeassistant.core import callback
 from homeassistant.data_entry_flow import AbortFlow
 from homeassistant.helpers import aiohttp_client
 from homeassistant.helpers.device_registry import format_mac
+from homeassistant.helpers.selector import (
+    NumberSelector,
+    NumberSelectorConfig,
+    NumberSelectorMode,
+)
 from homeassistant.helpers.service_info.dhcp import DhcpServiceInfo
 
-from .const import DOMAIN
+from .const import DEFAULT_SCAN_INTERVAL, DOMAIN, MIN_SCAN_INTERVAL
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -43,6 +56,14 @@ class AirZoneConfigFlow(ConfigFlow, domain=DOMAIN):
     _discovered_ip: str | None = None
     _discovered_mac: str | None = None
     MINOR_VERSION = 2
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(
+        config_entry: ConfigEntry,
+    ) -> AirzoneOptionsFlow:
+        """Create the options flow."""
+        return AirzoneOptionsFlow()
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -172,4 +193,37 @@ class AirZoneConfigFlow(ConfigFlow, domain=DOMAIN):
             step_id="discovered_connection",
             data_schema=vol.Schema(base_schema),
             errors=errors,
+        )
+
+
+class AirzoneOptionsFlow(OptionsFlow):
+    """Handle an options flow for Airzone."""
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Manage the options."""
+        if user_input is not None:
+            return self.async_create_entry(data=user_input)
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONF_SCAN_INTERVAL,
+                        default=self.config_entry.options.get(
+                            CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL
+                        ),
+                    ): NumberSelector(
+                        NumberSelectorConfig(
+                            min=MIN_SCAN_INTERVAL,
+                            max=3600,
+                            step=1,
+                            mode=NumberSelectorMode.BOX,
+                            unit_of_measurement="s",
+                        )
+                    ),
+                }
+            ),
         )
