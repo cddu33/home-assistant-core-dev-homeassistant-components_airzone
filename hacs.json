@@ -1,6 +1,4 @@
 {
   "name": "Airzone",
-  "content_in_root": true,
-  "filename": "manifest.json",
   "iot_class": "local_polling"
 }
