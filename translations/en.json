@@ -24,18 +24,6 @@
       }
     }
   },
-  "options": {
-    "step": {
-      "init": {
-        "data": {
-          "scan_interval": "Update interval"
-        },
-        "data_description": {
-          "scan_interval": "How often to poll the Airzone device, in seconds (minimum 10, default 60, recommended 30)."
-        }
-      }
-    }
-  },
   "entity": {
     "binary_sensor": {
       "air_demand": {

@@ -9,7 +9,6 @@ from aioairzone.exceptions import AirzoneError
 from aioairzone.localapi import AirzoneLocalApi
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
@@ -34,16 +33,12 @@ class AirzoneUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Initialize."""
         self.airzone = airzone
 
-        scan_interval = config_entry.options.get(
-            CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL
-        )
-
         super().__init__(
             hass,
             _LOGGER,
             config_entry=config_entry,
             name=DOMAIN,
-            update_interval=timedelta(seconds=scan_interval),
+            update_interval=timedelta(seconds=DEFAULT_SCAN_INTERVAL),
         )
 
     async def _async_update_data(self) -> dict[str, Any]:
