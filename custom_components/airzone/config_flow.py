@@ -32,7 +32,7 @@ class AirZoneMqttConfigFlow(ConfigFlow, domain=DOMAIN):
     def async_get_options_flow(config_entry: config_entries.ConfigEntry) -> config_entries.OptionsFlow:
         """Retourne le flux d'options."""
         from .options_flow import AirzoneOptionsFlow
-        return AirzoneOptionsFlow(config_entry)
+        return AirzoneOptionsFlow()
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None

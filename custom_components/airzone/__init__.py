@@ -4,7 +4,7 @@ import logging
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 
 from .const import CONF_TOPIC_PREFIX, DOMAIN, MANUFACTURER
@@ -65,7 +65,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: AirzoneConfigEntry) -> b
 
 async def async_unload_entry(hass: HomeAssistant, entry: AirzoneConfigEntry) -> bool:
     """Décharge une entrée de configuration."""
-    
+
     # On se désabonne proprement des topics MQTT
     if entry.runtime_data:
         await entry.runtime_data.async_unload()
@@ -73,8 +73,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: AirzoneConfigEntry) -> 
     # On décharge les plateformes
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
-@callback
-def async_get_options_flow(config_entry: ConfigEntry) -> config_entries.OptionsFlow:
-    """Retourne le flux d'options pour Airzone."""
-    from .options_flow import AirzoneOptionsFlow
-    return AirzoneOptionsFlow(config_entry)
+
+async def _async_options_updated(
+    hass: HomeAssistant, entry: AirzoneConfigEntry
+) -> None:
+    """Recharge l'intégration quand les options changent."""
+    await hass.config_entries.async_reload(entry.entry_id)

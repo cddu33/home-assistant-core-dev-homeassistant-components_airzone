@@ -4,14 +4,11 @@ from typing import Any
 import voluptuous as vol
 
 from homeassistant import config_entries
-from homeassistant.core import callback
-from .const import CONF_TOPIC_PREFIX, DOMAIN
+
+from .const import CONF_TOPIC_PREFIX
 
 class AirzoneOptionsFlow(config_entries.OptionsFlow):
     """Gère les options de configuration Airzone."""
-
-    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
-        self.config_entry = config_entry
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> config_entries.ConfigFlowResult:
         """Initialisation des options."""
