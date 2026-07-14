@@ -59,7 +59,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: AirzoneConfigEntry) -> b
 
     # HA va maintenant charger les fichiers climate.py, sensor.py, etc.
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-
+    entry.async_on_unload(entry.add_update_listener(_async_options_updated))
     return True
 
 
@@ -72,3 +72,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: AirzoneConfigEntry) -> 
 
     # On décharge les plateformes
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+
+@callback
+def async_get_options_flow(config_entry: ConfigEntry) -> config_entries.OptionsFlow:
+    """Retourne le flux d'options pour Airzone."""
+    from .options_flow import AirzoneOptionsFlow
+    return AirzoneOptionsFlow(config_entry)
