@@ -145,19 +145,24 @@ class AirzoneMqttCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             API_BODY: None,
         }
 
+        invoke_topic = f"{self.mqtt_prefix}/{AMT_INVOKE}"
+
         self._resp_event.clear()
-        await mqtt.async_publish(
-            self.hass, f"{self.mqtt_prefix}/{AMT_INVOKE}", json.dumps(payload), qos=0
+        _LOGGER.debug(
+            "Airzone MQTT: publish %s -> %s", invoke_topic, json.dumps(payload)
         )
+        await mqtt.async_publish(self.hass, invoke_topic, json.dumps(payload), qos=0)
 
         try:
             async with asyncio.timeout(POLL_TIMEOUT):
                 await self._resp_event.wait()
         except TimeoutError:
             _LOGGER.warning(
-                "Airzone MQTT: pas de réponse à az.get_status sur %s "
-                "(les devices apparaîtront à la réception d'évènements)",
-                self.mqtt_prefix,
+                "Airzone MQTT: pas de réponse à az.get_status "
+                "(envoyé sur %s, réponse attendue sur %s). "
+                "Les devices apparaîtront à la réception d'évènements",
+                invoke_topic,
+                destination,
             )
 
     # ------------------------------------------------------------------
