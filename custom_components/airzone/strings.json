@@ -1,34 +1,54 @@
 {
   "config": {
     "abort": {
-      "already_configured": "Cet appareil est déjà configuré."
+      "already_configured": "Device is already configured.",
+      "reauth_successful": "Migration successful."
     },
     "error": {
-      "invalid_mac": "Adresse MAC invalide (doit comporter 12 caractères).",
-      "empty_prefix": "Le préfixe du topic ne peut pas être vide.",
-      "unknown": "Une erreur inattendue est survenue."
+      "empty_prefix": "The topic prefix cannot be empty."
     },
     "step": {
       "user": {
-        "title": "Configurer Airzone MQTT",
-        "description": "Entrez le préfixe MQTT (Topic de départ) de votre appareil Airzone. Il s'agit généralement de l'adresse MAC (ex: 1a2b3c4d5e6f) ou de l'alias défini dans l'application Airzone Cloud.",
+        "title": "Configure Airzone MQTT",
+        "description": "Enter the MQTT prefix (base topic) of your Airzone device. This is usually the MAC address (e.g. 1a2b3c4d5e6f) or the alias defined in the Airzone Cloud app.",
         "data": {
-          "topic_prefix": "Préfixe du topic (MAC ou Alias)"
+          "topic_prefix": "Topic prefix (MAC or alias)"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Migrate Airzone to MQTT",
+        "description": "This integration now uses MQTT. Enter the MQTT prefix (MAC or alias) of your Airzone device to finish migrating.",
+        "data": {
+          "topic_prefix": "Topic prefix (MAC or alias)"
         }
       }
     }
   },
   "entity": {
     "binary_sensor": {
-      "air_demand": { "name": "Demande d'air" },
-      "anti_freeze": { "name": "Antigel" },
-      "cold_demand": { "name": "Demande de froid" },
-      "demand": { "name": "Demande" },
-      "floor_demand": { "name": "Demande plancher" },
-      "heat_demand": { "name": "Demande de chaud" }
+      "air_demand": {
+        "name": "Demande d'air"
+      },
+      "anti_freeze": {
+        "name": "Antigel"
+      },
+      "cold_demand": {
+        "name": "Demande de froid"
+      },
+      "demand": {
+        "name": "Demande"
+      },
+      "floor_demand": {
+        "name": "Demande plancher"
+      },
+      "heat_demand": {
+        "name": "Demande de chaud"
+      }
     },
     "climate": {
-      "all_zones": { "name": "Toutes les zones" }
+      "all_zones": {
+        "name": "Toutes les zones"
+      }
     },
     "select": {
       "all_zones_sleep": {
@@ -116,11 +136,21 @@
           "off": "Arrêt"
         }
       },
-      "power": { "name": "Puissance" },
-      "rssi": { "name": "RSSI" },
-      "thermostat_signal": { "name": "Force du signal" },
-      "wifi_channel": { "name": "Canal Wi-Fi" },
-      "wifi_quality": { "name": "Qualité Wi-Fi" }
+      "power": {
+        "name": "Puissance"
+      },
+      "rssi": {
+        "name": "RSSI"
+      },
+      "thermostat_signal": {
+        "name": "Force du signal"
+      },
+      "wifi_channel": {
+        "name": "Canal Wi-Fi"
+      },
+      "wifi_quality": {
+        "name": "Qualité Wi-Fi"
+      }
     }
   }
 }

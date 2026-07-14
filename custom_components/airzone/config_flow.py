@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping
 from typing import Any
 
 import voluptuous as vol
@@ -58,6 +59,34 @@ class AirZoneMqttConfigFlow(ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="user",
+            data_schema=CONFIG_SCHEMA,
+            errors=errors,
+        )
+
+    async def async_step_reauth(
+        self, entry_data: Mapping[str, Any]
+    ) -> ConfigFlowResult:
+        """Déclenché lors d'une migration depuis l'ancienne version API."""
+        return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Demande le préfixe MQTT pour finaliser le passage à MQTT."""
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            topic_prefix = user_input[CONF_TOPIC_PREFIX].strip()
+            if not topic_prefix:
+                errors["base"] = "empty_prefix"
+            else:
+                return self.async_update_reload_and_abort(
+                    self._get_reauth_entry(),
+                    data={CONF_TOPIC_PREFIX: topic_prefix},
+                )
+
+        return self.async_show_form(
+            step_id="reauth_confirm",
             data_schema=CONFIG_SCHEMA,
             errors=errors,
         )

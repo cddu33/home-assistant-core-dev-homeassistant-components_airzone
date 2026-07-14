@@ -1,25 +1,25 @@
 {
   "config": {
     "abort": {
-      "already_configured": "L'appareil est déjà configuré"
+      "already_configured": "Cet appareil est déjà configuré.",
+      "reauth_successful": "Migration réussie."
     },
     "error": {
-      "cannot_connect": "Échec de connexion",
-      "invalid_system_id": "Identifiant de système Airzone invalide"
+      "empty_prefix": "Le préfixe du topic ne peut pas être vide."
     },
     "step": {
-      "discovered_connection": {
+      "user": {
+        "title": "Configurer Airzone MQTT",
+        "description": "Entrez le préfixe MQTT (topic de départ) de votre appareil Airzone. Il s'agit généralement de l'adresse MAC (ex : 1a2b3c4d5e6f) ou de l'alias défini dans l'application Airzone Cloud.",
         "data": {
-          "host": "Hôte",
-          "id": "Identifiant du système",
-          "port": "Port"
+          "topic_prefix": "Préfixe du topic (MAC ou alias)"
         }
       },
-      "user": {
+      "reauth_confirm": {
+        "title": "Migrer Airzone vers MQTT",
+        "description": "Cette intégration utilise désormais MQTT. Entrez le préfixe MQTT (MAC ou alias) de votre appareil Airzone pour finaliser la migration.",
         "data": {
-          "host": "Hôte",
-          "id": "Identifiant du système",
-          "port": "Port"
+          "topic_prefix": "Préfixe du topic (MAC ou alias)"
         }
       }
     }

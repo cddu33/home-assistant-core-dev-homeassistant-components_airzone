@@ -5,6 +5,7 @@ import logging
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers import device_registry as dr
 
 from .const import CONF_TOPIC_PREFIX, DOMAIN, MANUFACTURER
@@ -29,6 +30,15 @@ type AirzoneConfigEntry = ConfigEntry[AirzoneMqttCoordinator]
 
 async def async_setup_entry(hass: HomeAssistant, entry: AirzoneConfigEntry) -> bool:
     """Configure Airzone MQTT à partir d'une entrée de configuration."""
+    # Migration depuis l'ancienne version (API locale HTTP) : l'entrée existante
+    # contient host/port mais pas de préfixe MQTT. On déclenche une
+    # reconfiguration (reauth) pour demander le préfixe à l'utilisateur.
+    if CONF_TOPIC_PREFIX not in entry.data:
+        raise ConfigEntryAuthFailed(
+            "Cette intégration utilise désormais MQTT. "
+            "Veuillez renseigner le préfixe MQTT (MAC ou alias) de votre appareil."
+        )
+
     topic_prefix = entry.data[CONF_TOPIC_PREFIX]
 
     # Initialisation de notre gestionnaire central MQTT
