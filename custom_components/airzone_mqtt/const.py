@@ -4,7 +4,7 @@ from typing import Final
 
 from homeassistant.const import UnitOfTemperature
 
-DOMAIN: Final = "airzone"
+DOMAIN: Final = "airzone_mqtt"
 MANUFACTURER: Final = "Airzone"
 CONF_TOPIC_PREFIX: Final = "topic_prefix"
 
