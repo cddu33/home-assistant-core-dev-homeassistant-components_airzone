@@ -1,29 +1,17 @@
-"""The Airzone integration."""
+"""The Airzone MQTT integration."""
 
 import logging
-from typing import Any
 
-from aioairzone.const import (
-    AZD_FIRMWARE,
-    AZD_FULL_NAME,
-    AZD_MAC,
-    AZD_MODEL,
-    AZD_WEBSERVER,
-    DEFAULT_SYSTEM_ID,
-)
-from aioairzone.localapi import AirzoneLocalApi, ConnectionOptions
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import Platform
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr
 
-from homeassistant.const import CONF_HOST, CONF_ID, CONF_PORT, Platform
-from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import (
-    aiohttp_client,
-    device_registry as dr,
-    entity_registry as er,
-)
+from .const import CONF_TOPIC_PREFIX, DOMAIN, MANUFACTURER
+# On importera notre futur gestionnaire MQTT qu'on va coder juste après
+from .coordinator import AirzoneMqttCoordinator
 
-from .const import DOMAIN, MANUFACTURER
-from .coordinator import AirzoneConfigEntry, AirzoneUpdateCoordinator
-
+# Liste des plateformes que ton intégration va gérer
 PLATFORMS: list[Platform] = [
     Platform.BINARY_SENSOR,
     Platform.CLIMATE,
@@ -35,114 +23,52 @@ PLATFORMS: list[Platform] = [
 
 _LOGGER = logging.getLogger(__name__)
 
-
-async def _async_migrate_unique_ids(
-    hass: HomeAssistant,
-    entry: AirzoneConfigEntry,
-    coordinator: AirzoneUpdateCoordinator,
-) -> None:
-    """Migrate entities when the mac address gets discovered."""
-
-    @callback
-    def _async_migrator(entity_entry: er.RegistryEntry) -> dict[str, Any] | None:
-        updates = None
-
-        unique_id = entry.unique_id
-        entry_id = entry.entry_id
-        entity_unique_id = entity_entry.unique_id
-
-        if entity_unique_id.startswith(entry_id):
-            new_unique_id = f"{unique_id}{entity_unique_id.removeprefix(entry_id)}"
-            _LOGGER.debug(
-                "Migrating unique_id from [%s] to [%s]",
-                entity_unique_id,
-                new_unique_id,
-            )
-            updates = {"new_unique_id": new_unique_id}
-
-        return updates
-
-    if (
-        entry.unique_id is None
-        and AZD_WEBSERVER in coordinator.data
-        and AZD_MAC in coordinator.data[AZD_WEBSERVER]
-        and (mac := coordinator.data[AZD_WEBSERVER][AZD_MAC]) is not None
-    ):
-        updates: dict[str, Any] = {
-            "unique_id": dr.format_mac(mac),
-        }
-        hass.config_entries.async_update_entry(entry, **updates)
-
-        await er.async_migrate_entries(hass, entry.entry_id, _async_migrator)
+# Typage moderne (HA 2024.x) pour attacher le coordinateur à l'entrée de config
+type AirzoneConfigEntry = ConfigEntry[AirzoneMqttCoordinator]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: AirzoneConfigEntry) -> bool:
-    """Set up Airzone from a config entry."""
-    options = ConnectionOptions(
-        entry.data[CONF_HOST],
-        entry.data[CONF_PORT],
-        entry.data[CONF_ID],
-    )
+    """Configure Airzone MQTT à partir d'une entrée de configuration."""
+    topic_prefix = entry.data[CONF_TOPIC_PREFIX]
 
-    airzone = AirzoneLocalApi(aiohttp_client.async_get_clientsession(hass), options)
-    coordinator = AirzoneUpdateCoordinator(hass, entry, airzone)
-    await coordinator.async_config_entry_first_refresh()
-    await _async_migrate_unique_ids(hass, entry, coordinator)
+    # Initialisation de notre gestionnaire central MQTT
+    coordinator = AirzoneMqttCoordinator(hass, entry, topic_prefix)
+    
+    # On abonne notre coordinateur aux topics MQTT de base
+    await coordinator.async_init()
 
+    # On attache le coordinateur à l'entrée de config pour que les plateformes (climate.py, etc.) y accèdent
     entry.runtime_data = coordinator
 
-    entry.async_on_unload(entry.add_update_listener(_async_options_updated))
-
+    # Enregistrement du Webserver (la passerelle principale) dans le Device Registry de HA
     device_registry = dr.async_get(hass)
+    
+    # Si le préfixe fait 12 caractères, c'est probablement la vraie MAC, on la déclare formellement
+    connections = set()
+    if len(topic_prefix) == 12:
+        connections.add((dr.CONNECTION_NETWORK_MAC, topic_prefix.upper()))
 
-    ws_data: dict[str, Any] | None = coordinator.data.get(AZD_WEBSERVER)
-    if ws_data is not None:
-        mac = ws_data.get(AZD_MAC, "")
+    device_registry.async_get_or_create(
+        config_entry_id=entry.entry_id,
+        connections=connections,
+        identifiers={(DOMAIN, topic_prefix)},
+        manufacturer=MANUFACTURER,
+        name=f"Airzone Webserver ({topic_prefix})",
+        model="Webserver / Aidoo (MQTT)",
+    )
 
-        device_registry.async_get_or_create(
-            config_entry_id=entry.entry_id,
-            connections={(dr.CONNECTION_NETWORK_MAC, mac)},
-            identifiers={(DOMAIN, f"{entry.entry_id}_ws")},
-            manufacturer=MANUFACTURER,
-            model=ws_data.get(AZD_MODEL),
-            name=ws_data.get(AZD_FULL_NAME),
-            sw_version=ws_data.get(AZD_FIRMWARE),
-        )
-
+    # HA va maintenant charger les fichiers climate.py, sensor.py, etc.
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     return True
 
 
-async def _async_options_updated(
-    hass: HomeAssistant, entry: AirzoneConfigEntry
-) -> None:
-    """Reload the config entry when its options are updated."""
-    await hass.config_entries.async_reload(entry.entry_id)
-
-
 async def async_unload_entry(hass: HomeAssistant, entry: AirzoneConfigEntry) -> bool:
-    """Unload a config entry."""
+    """Décharge une entrée de configuration."""
+    
+    # On se désabonne proprement des topics MQTT
+    if entry.runtime_data:
+        await entry.runtime_data.async_unload()
+
+    # On décharge les plateformes
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
-
-
-async def async_migrate_entry(hass: HomeAssistant, entry: AirzoneConfigEntry) -> bool:
-    """Migrate an old entry."""
-    if entry.version == 1 and entry.minor_version < 2:
-        # Add missing CONF_ID
-        system_id = entry.data.get(CONF_ID, DEFAULT_SYSTEM_ID)
-        new_data = entry.data.copy()
-        new_data[CONF_ID] = system_id
-        hass.config_entries.async_update_entry(
-            entry,
-            data=new_data,
-            minor_version=2,
-        )
-
-    _LOGGER.info(
-        "Migration to configuration version %s.%s successful",
-        entry.version,
-        entry.minor_version,
-    )
-
-    return True

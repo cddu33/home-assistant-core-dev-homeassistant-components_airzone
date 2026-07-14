@@ -1,75 +1,55 @@
 {
   "config": {
     "abort": {
-      "already_configured": "[%key:common::config_flow::abort::already_configured_device%]"
+      "already_configured": "Cet appareil est déjà configuré."
     },
     "error": {
-      "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]",
-      "invalid_system_id": "Invalid Airzone System ID"
+      "invalid_mac": "Adresse MAC invalide (doit comporter 12 caractères).",
+      "empty_prefix": "Le préfixe du topic ne peut pas être vide.",
+      "unknown": "Une erreur inattendue est survenue."
     },
     "step": {
-      "discovered_connection": {
-        "data": {
-          "host": "[%key:common::config_flow::data::host%]",
-          "id": "[%key:component::airzone::config::step::user::data::id%]",
-          "port": "[%key:common::config_flow::data::port%]"
-        }
-      },
       "user": {
+        "title": "Configurer Airzone MQTT",
+        "description": "Entrez le préfixe MQTT (Topic de départ) de votre appareil Airzone. Il s'agit généralement de l'adresse MAC (ex: 1a2b3c4d5e6f) ou de l'alias défini dans l'application Airzone Cloud.",
         "data": {
-          "host": "[%key:common::config_flow::data::host%]",
-          "id": "System ID",
-          "port": "[%key:common::config_flow::data::port%]"
+          "topic_prefix": "Préfixe du topic (MAC ou Alias)"
         }
       }
     }
   },
   "entity": {
     "binary_sensor": {
-      "air_demand": {
-        "name": "Air demand"
-      },
-      "anti_freeze": {
-        "name": "Anti-freeze"
-      },
-      "cold_demand": {
-        "name": "Cold demand"
-      },
-      "demand": {
-        "name": "Demand"
-      },
-      "floor_demand": {
-        "name": "Floor demand"
-      },
-      "heat_demand": {
-        "name": "Heat demand"
-      }
+      "air_demand": { "name": "Demande d'air" },
+      "anti_freeze": { "name": "Antigel" },
+      "cold_demand": { "name": "Demande de froid" },
+      "demand": { "name": "Demande" },
+      "floor_demand": { "name": "Demande plancher" },
+      "heat_demand": { "name": "Demande de chaud" }
     },
     "climate": {
-      "all_zones": {
-        "name": "All zones"
-      }
+      "all_zones": { "name": "Toutes les zones" }
     },
     "select": {
       "all_zones_sleep": {
-        "name": "Sleep (all zones)",
+        "name": "Sommeil (toutes zones)",
         "state": {
-          "30m": "[%key:component::airzone::entity::select::sleep_times::state::30m%]",
-          "60m": "[%key:component::airzone::entity::select::sleep_times::state::60m%]",
-          "90m": "[%key:component::airzone::entity::select::sleep_times::state::90m%]",
-          "off": "[%key:common::state::off%]"
+          "30m": "30 minutes",
+          "60m": "60 minutes",
+          "90m": "90 minutes",
+          "off": "Arrêt"
         }
       },
       "cold_stage": {
-        "name": "Cooling emission type",
+        "name": "Type d'émission froid",
         "state": {
           "air": "Air",
-          "combined": "Combined",
+          "combined": "Combiné",
           "radiant": "Radiant"
         }
       },
       "grille_angles": {
-        "name": "Cold angle",
+        "name": "Angle froid",
         "state": {
           "40deg": "40°",
           "45deg": "45°",
@@ -78,31 +58,31 @@
         }
       },
       "heat_angles": {
-        "name": "Heat angle",
+        "name": "Angle chaud",
         "state": {
-          "40deg": "[%key:component::airzone::entity::select::grille_angles::state::40deg%]",
-          "45deg": "[%key:component::airzone::entity::select::grille_angles::state::45deg%]",
-          "50deg": "[%key:component::airzone::entity::select::grille_angles::state::50deg%]",
-          "90deg": "[%key:component::airzone::entity::select::grille_angles::state::90deg%]"
+          "40deg": "40°",
+          "45deg": "45°",
+          "50deg": "50°",
+          "90deg": "90°"
         }
       },
       "heat_stage": {
-        "name": "Heating emission type",
+        "name": "Type d'émission chaud",
         "state": {
-          "air": "[%key:component::airzone::entity::select::cold_stage::state::air%]",
-          "combined": "[%key:component::airzone::entity::select::cold_stage::state::combined%]",
-          "radiant": "[%key:component::airzone::entity::select::cold_stage::state::radiant%]"
+          "air": "Air",
+          "combined": "Combiné",
+          "radiant": "Radiant"
         }
       },
       "modes": {
         "name": "Mode",
         "state": {
-          "cool": "[%key:component::climate::entity_component::_::state::cool%]",
-          "dry": "[%key:component::climate::entity_component::_::state::dry%]",
-          "fan": "[%key:component::climate::entity_component::_::state::fan_only%]",
-          "heat": "[%key:component::climate::entity_component::_::state::heat%]",
-          "heat_cool": "[%key:component::climate::entity_component::_::state::heat_cool%]",
-          "stop": "Stop"
+          "cool": "Froid",
+          "dry": "Déshumidification",
+          "fan": "Ventilation",
+          "heat": "Chaud",
+          "heat_cool": "Auto",
+          "stop": "Arrêt"
         }
       },
       "q_adapt": {
@@ -110,18 +90,18 @@
         "state": {
           "maximum": "Maximum",
           "minimum": "Minimum",
-          "power": "Power",
+          "power": "Puissance",
           "silence": "Silence",
           "standard": "Standard"
         }
       },
       "sleep_times": {
-        "name": "Sleep",
+        "name": "Sommeil",
         "state": {
           "30m": "30 minutes",
           "60m": "60 minutes",
           "90m": "90 minutes",
-          "off": "[%key:common::state::off%]"
+          "off": "Arrêt"
         }
       }
     },
@@ -132,25 +112,15 @@
           "a": "A",
           "a_p": "A+",
           "a_pp": "A++",
-          "manual": "Manual",
-          "off": "[%key:common::state::off%]"
+          "manual": "Manuel",
+          "off": "Arrêt"
         }
       },
-      "power": {
-        "name": "Power"
-      },
-      "rssi": {
-        "name": "RSSI"
-      },
-      "thermostat_signal": {
-        "name": "Signal strength"
-      },
-      "wifi_channel": {
-        "name": "Wi-Fi channel"
-      },
-      "wifi_quality": {
-        "name": "Wi-Fi quality"
-      }
+      "power": { "name": "Puissance" },
+      "rssi": { "name": "RSSI" },
+      "thermostat_signal": { "name": "Force du signal" },
+      "wifi_channel": { "name": "Canal Wi-Fi" },
+      "wifi_quality": { "name": "Qualité Wi-Fi" }
     }
   }
 }

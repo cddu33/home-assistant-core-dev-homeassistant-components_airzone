@@ -1,119 +1,122 @@
-"""Support for the Airzone switch."""
+"""Support for the Airzone MQTT switches."""
 
 from dataclasses import dataclass
 from typing import Any, Final
+import logging
 
-from aioairzone.const import API_ON, AZD_ON, AZD_ZONES
-
-from homeassistant.components.switch import (
-    SwitchDeviceClass,
-    SwitchEntity,
-    SwitchEntityDescription,
-)
+from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .coordinator import AirzoneConfigEntry, AirzoneUpdateCoordinator
-from .entity import AirzoneEntity, AirzoneZoneEntity
+from .coordinator import AirzoneMqttCoordinator
+from .entity import AirzoneEntity, AirzoneSystemEntity, AirzoneZoneEntity
 
+_LOGGER = logging.getLogger(__name__)
 
 @dataclass(frozen=True, kw_only=True)
-class AirzoneSwitchDescription(SwitchEntityDescription):
-    """Class to describe an Airzone switch entity."""
-
+class AirzoneSwitchEntityDescription(SwitchEntityDescription):
+    """Description d'un Switch Airzone."""
     api_param: str
 
 
-ZONE_SWITCH_TYPES: Final[tuple[AirzoneSwitchDescription, ...]] = (
-    AirzoneSwitchDescription(
-        api_param=API_ON,
-        device_class=SwitchDeviceClass.SWITCH,
-        key=AZD_ON,
-    ),
+# --- Définit ici tes interrupteurs si besoin ---
+# Par exemple, si tu as une option binaire MQTT "auto_mode" sur ton système
+SYSTEM_SWITCH_TYPES: Final[tuple[AirzoneSwitchEntityDescription, ...]] = (
+    # AirzoneSwitchEntityDescription(
+    #     key="auto_mode",
+    #     api_param="auto_mode",
+    #     entity_category=EntityCategory.CONFIG,
+    #     translation_key="auto_mode",
+    # ),
+)
+
+ZONE_SWITCH_TYPES: Final[tuple[AirzoneSwitchEntityDescription, ...]] = (
+    # À remplir selon les besoins
 )
 
 
 async def async_setup_entry(
-    hass: HomeAssistant,
-    entry: AirzoneConfigEntry,
-    async_add_entities: AddConfigEntryEntitiesCallback,
+    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddConfigEntryEntitiesCallback
 ) -> None:
-    """Add Airzone switch from a config_entry."""
-    coordinator = entry.runtime_data
-
+    """Ajoute les switchs Airzone."""
+    coordinator: AirzoneMqttCoordinator = entry.runtime_data
+    added_systems: set[str] = set()
     added_zones: set[str] = set()
 
     def _async_entity_listener() -> None:
-        """Handle additions of switch."""
+        entities: list[SwitchEntity] = []
 
-        zones_data = coordinator.data.get(AZD_ZONES, {})
-        received_zones = set(zones_data)
-        new_zones = received_zones - added_zones
-        if new_zones:
-            async_add_entities(
-                AirzoneZoneSwitch(
-                    coordinator,
-                    description,
-                    entry,
-                    system_zone_id,
-                    zones_data.get(system_zone_id),
-                )
-                for system_zone_id in new_zones
-                for description in ZONE_SWITCH_TYPES
-                if description.key in zones_data.get(system_zone_id)
-            )
-            added_zones.update(new_zones)
+        # --- Systèmes ---
+        systems_data = coordinator.data.get("systems", {})
+        for sys_id in set(systems_data) - added_systems:
+            sys_data = systems_data[sys_id]
+            for desc in SYSTEM_SWITCH_TYPES:
+                if desc.key in sys_data:
+                    entities.append(AirzoneSystemSwitch(coordinator, desc, entry, sys_id, sys_data))
+            added_systems.add(sys_id)
+
+        # --- Zones ---
+        zones_data = coordinator.data.get("zones", {})
+        for z_id in set(zones_data) - added_zones:
+            z_data = zones_data[z_id]
+            for desc in ZONE_SWITCH_TYPES:
+                if desc.key in z_data:
+                    entities.append(AirzoneZoneSwitch(coordinator, desc, entry, z_id, z_data))
+            added_zones.add(z_id)
+
+        if entities:
+            async_add_entities(entities)
 
     entry.async_on_unload(coordinator.async_add_listener(_async_entity_listener))
     _async_entity_listener()
 
 
 class AirzoneBaseSwitch(AirzoneEntity, SwitchEntity):
-    """Define an Airzone switch."""
+    """Classe de base pour un Switch Airzone."""
 
-    entity_description: AirzoneSwitchDescription
+    entity_description: AirzoneSwitchEntityDescription
 
     @callback
     def _handle_coordinator_update(self) -> None:
-        """Update attributes when the coordinator updates."""
         self._async_update_attrs()
         super()._handle_coordinator_update()
 
     @callback
     def _async_update_attrs(self) -> None:
-        """Update switch attributes."""
-        self._attr_is_on = self.get_airzone_value(self.entity_description.key)
+        """Met à jour l'état du switch (ON/OFF) depuis les données MQTT."""
+        val = self.get_airzone_value(self.entity_description.key)
+        self._attr_is_on = bool(val) if val is not None else None
 
 
-class AirzoneZoneSwitch(AirzoneZoneEntity, AirzoneBaseSwitch):
-    """Define an Airzone Zone switch."""
+class AirzoneSystemSwitch(AirzoneSystemEntity, AirzoneBaseSwitch):
+    """Switch pour le Système global."""
 
-    def __init__(
-        self,
-        coordinator: AirzoneUpdateCoordinator,
-        description: AirzoneSwitchDescription,
-        entry: ConfigEntry,
-        system_zone_id: str,
-        zone_data: dict[str, Any],
-    ) -> None:
-        """Initialize."""
-        super().__init__(coordinator, entry, system_zone_id, zone_data)
-
-        self._attr_name = None
-        self._attr_unique_id = (
-            f"{self._attr_unique_id}_{system_zone_id}_{description.key}"
-        )
-        self.entity_description = description
-
+    def __init__(self, coord, desc, entry, sys_id, sys_data) -> None:
+        super().__init__(coord, entry, sys_data)
+        self._attr_unique_id = f"{self._attr_unique_id}_{sys_id}_{desc.key}"
+        self.entity_description = desc
         self._async_update_attrs()
 
     async def async_turn_on(self, **kwargs: Any) -> None:
-        """Turn the entity on."""
-        param = self.entity_description.api_param
-        await self._async_update_hvac_params({param: True})
+        await self._async_update_sys_params({self.entity_description.api_param: 1})
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        """Turn the entity off."""
-        param = self.entity_description.api_param
-        await self._async_update_hvac_params({param: False})
+        await self._async_update_sys_params({self.entity_description.api_param: 0})
+
+
+class AirzoneZoneSwitch(AirzoneZoneEntity, AirzoneBaseSwitch):
+    """Switch pour une Zone individuelle."""
+
+    def __init__(self, coord, desc, entry, z_id, z_data) -> None:
+        super().__init__(coord, entry, z_id, z_data)
+        self._attr_unique_id = f"{self._attr_unique_id}_{z_id}_{desc.key}"
+        self.entity_description = desc
+        self._async_update_attrs()
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        await self._async_update_hvac_params({self.entity_description.api_param: 1})
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        await self._async_update_hvac_params({self.entity_description.api_param: 0})

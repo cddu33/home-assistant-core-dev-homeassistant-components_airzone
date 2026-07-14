@@ -1,27 +1,7 @@
-"""Entity classes for the Airzone integration."""
+"""Entity classes for the Airzone MQTT integration."""
 
 import logging
 from typing import Any
-
-from aioairzone.const import (
-    API_SYSTEM_ID,
-    API_ZONE_ID,
-    AZD_AVAILABLE,
-    AZD_FIRMWARE,
-    AZD_FULL_NAME,
-    AZD_HOT_WATER,
-    AZD_ID,
-    AZD_MAC,
-    AZD_MODEL,
-    AZD_NAME,
-    AZD_SYSTEM,
-    AZD_SYSTEMS,
-    AZD_THERMOSTAT_FW,
-    AZD_THERMOSTAT_MODEL,
-    AZD_WEBSERVER,
-    AZD_ZONES,
-)
-from aioairzone.exceptions import AirzoneError
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.exceptions import HomeAssistantError
@@ -30,34 +10,50 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, MANUFACTURER
-from .coordinator import AirzoneConfigEntry, AirzoneUpdateCoordinator
+from .coordinator import AirzoneMqttCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
+# Anciennes constantes de aioairzone, redéfinies ici pour l'autonomie du module
+AZD_AVAILABLE = "available"
+AZD_FIRMWARE = "firmware"
+AZD_FULL_NAME = "name"
+AZD_HOT_WATER = "dhw"
+AZD_ID = "zone_id"
+AZD_MAC = "mac"
+AZD_MODEL = "model"
+AZD_NAME = "name"
+AZD_SYSTEM = "system_id"
+AZD_SYSTEMS = "systems"
+AZD_THERMOSTAT_FW = "thermostat_fw"
+AZD_THERMOSTAT_MODEL = "thermostat_model"
+AZD_WEBSERVER = "webserver"
+AZD_ZONES = "zones"
 
-class AirzoneEntity(CoordinatorEntity[AirzoneUpdateCoordinator]):
-    """Define an Airzone entity."""
+
+class AirzoneEntity(CoordinatorEntity[AirzoneMqttCoordinator]):
+    """Classe de base pour une entité Airzone."""
 
     _attr_has_entity_name = True
 
     def get_airzone_value(self, key: str) -> Any:
-        """Return Airzone entity value by key."""
+        """Retourne la valeur de l'entité par sa clé."""
         raise NotImplementedError
 
 
 class AirzoneSystemEntity(AirzoneEntity):
-    """Define an Airzone System entity."""
+    """Représentation d'un Système Airzone global."""
 
     def __init__(
         self,
-        coordinator: AirzoneUpdateCoordinator,
-        entry: AirzoneConfigEntry,
+        coordinator: AirzoneMqttCoordinator,
+        entry: ConfigEntry,
         system_data: dict[str, Any],
     ) -> None:
-        """Initialize."""
+        """Initialisation."""
         super().__init__(coordinator)
 
-        self.system_id = system_data[AZD_ID]
+        self.system_id = system_data.get(AZD_SYSTEM, 1)
 
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, f"{entry.entry_id}_{self.system_id}")},
@@ -72,124 +68,122 @@ class AirzoneSystemEntity(AirzoneEntity):
 
     @property
     def available(self) -> bool:
-        """Return system availability."""
-        return super().available and self.get_airzone_value(AZD_AVAILABLE)
+        """Retourne la disponibilité du système."""
+        # En MQTT, on considère par défaut que c'est disponible si on reçoit des trames
+        return super().available and self.get_airzone_value(AZD_AVAILABLE) is not False
 
     def get_airzone_value(self, key: str) -> Any:
-        """Return system value by key."""
+        """Retourne la valeur par clé pour ce système."""
         value = None
-        if system := self.coordinator.data[AZD_SYSTEMS].get(self.system_id):
+        if system := self.coordinator.data.get(AZD_SYSTEMS, {}).get(str(self.system_id)):
             if key in system:
                 value = system[key]
         return value
 
     async def _async_update_sys_params(self, params: dict[str, Any]) -> None:
-        """Send system parameters to API."""
-        _params = {
-            API_SYSTEM_ID: self.system_id,
-            **params,
-        }
-        _LOGGER.debug("update_sys_params=%s", _params)
+        """Envoie les paramètres système via l'API RPC MQTT."""
+        _LOGGER.debug("update_sys_params=%s", params)
         try:
-            await self.coordinator.airzone.set_sys_parameters(_params)
-        except AirzoneError as error:
+            # Format RPC attendu pour un système
+            rpc_params = {
+                "system_id": self.system_id,
+                "device_set_status": params
+            }
+            await self.coordinator.async_send_rpc("AzSystemSetStatus", rpc_params)
+        except Exception as error:
             raise HomeAssistantError(
-                f"Failed to set system {self.entity_id}: {error}"
+                f"Échec de l'envoi de la commande système {self.entity_id}: {error}"
             ) from error
-
-        self.coordinator.async_set_updated_data(self.coordinator.airzone.data())
 
 
 class AirzoneHotWaterEntity(AirzoneEntity):
-    """Define an Airzone Hot Water entity."""
+    """Représentation du module Eau Chaude Sanitaire (DHW) Airzone."""
 
     def __init__(
         self,
-        coordinator: AirzoneUpdateCoordinator,
+        coordinator: AirzoneMqttCoordinator,
         entry: ConfigEntry,
     ) -> None:
-        """Initialize."""
+        """Initialisation."""
         super().__init__(coordinator)
 
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, f"{entry.entry_id}_dhw")},
             manufacturer=MANUFACTURER,
             model="DHW",
-            name=self.get_airzone_value(AZD_NAME),
+            name=self.get_airzone_value(AZD_NAME) or "Eau Chaude",
         )
         if AZD_WEBSERVER in self.coordinator.data:
             self._attr_device_info["via_device"] = (DOMAIN, f"{entry.entry_id}_ws")
         self._attr_unique_id = entry.unique_id or entry.entry_id
 
     def get_airzone_value(self, key: str) -> Any:
-        """Return DHW value by key."""
-        return self.coordinator.data[AZD_HOT_WATER].get(key)
+        """Retourne la valeur DHW par sa clé."""
+        return self.coordinator.data.get(AZD_HOT_WATER, {}).get(key)
 
     async def _async_update_dhw_params(self, params: dict[str, Any]) -> None:
-        """Send DHW parameters to API."""
-        _params = {
-            API_SYSTEM_ID: 0,
-            **params,
-        }
-        _LOGGER.debug("update_dhw_params=%s", _params)
+        """Envoie les paramètres DHW via l'API RPC MQTT."""
+        _LOGGER.debug("update_dhw_params=%s", params)
         try:
-            await self.coordinator.airzone.set_dhw_parameters(_params)
-        except AirzoneError as error:
-            raise HomeAssistantError(f"Failed to set DHW: {error}") from error
-
-        self.coordinator.async_set_updated_data(self.coordinator.airzone.data())
+            rpc_params = {
+                "system_id": 0, # ECS est généralement sur le système 0
+                "device_set_status": params
+            }
+            await self.coordinator.async_send_rpc("AzAcsSetStatus", rpc_params)
+        except Exception as error:
+            raise HomeAssistantError(f"Échec de la commande DHW: {error}") from error
 
 
 class AirzoneWebServerEntity(AirzoneEntity):
-    """Define an Airzone WebServer entity."""
+    """Représentation de la passerelle WebServer/Aidoo."""
 
     def __init__(
         self,
-        coordinator: AirzoneUpdateCoordinator,
+        coordinator: AirzoneMqttCoordinator,
         entry: ConfigEntry,
     ) -> None:
-        """Initialize."""
+        """Initialisation."""
         super().__init__(coordinator)
 
-        mac = self.get_airzone_value(AZD_MAC)
+        mac = self.get_airzone_value(AZD_MAC) or coordinator.topic_prefix
 
         self._attr_device_info = DeviceInfo(
-            connections={(dr.CONNECTION_NETWORK_MAC, mac)},
+            connections={(dr.CONNECTION_NETWORK_MAC, mac.upper())},
             identifiers={(DOMAIN, f"{entry.entry_id}_ws")},
             manufacturer=MANUFACTURER,
-            model=self.get_airzone_value(AZD_MODEL),
-            name=self.get_airzone_value(AZD_FULL_NAME),
+            model=self.get_airzone_value(AZD_MODEL) or "Webserver (MQTT)",
+            name=self.get_airzone_value(AZD_FULL_NAME) or f"Airzone {mac}",
             sw_version=self.get_airzone_value(AZD_FIRMWARE),
         )
         self._attr_unique_id = entry.unique_id or entry.entry_id
 
     def get_airzone_value(self, key: str) -> Any:
-        """Return system value by key."""
-        return self.coordinator.data[AZD_WEBSERVER].get(key)
+        """Retourne la valeur du webserver par clé."""
+        return self.coordinator.data.get(AZD_WEBSERVER, {}).get(key)
 
 
 class AirzoneZoneEntity(AirzoneEntity):
-    """Define an Airzone Zone entity."""
+    """Représentation d'une Zone (Thermostat) Airzone."""
 
     def __init__(
         self,
-        coordinator: AirzoneUpdateCoordinator,
+        coordinator: AirzoneMqttCoordinator,
         entry: ConfigEntry,
         system_zone_id: str,
         zone_data: dict[str, Any],
     ) -> None:
-        """Initialize."""
+        """Initialisation."""
         super().__init__(coordinator)
 
-        self.system_id = zone_data[AZD_SYSTEM]
+        self.system_id = zone_data.get(AZD_SYSTEM)
         self.system_zone_id = system_zone_id
-        self.zone_id = zone_data[AZD_ID]
+        self.zone_id = zone_data.get(AZD_ID)
 
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, f"{entry.entry_id}_{system_zone_id}")},
             manufacturer=MANUFACTURER,
             model=self.get_airzone_value(AZD_THERMOSTAT_MODEL),
-            name=zone_data[AZD_NAME],
+            name=zone_data.get(AZD_NAME, f"Zone {self.zone_id}"),
             sw_version=self.get_airzone_value(AZD_THERMOSTAT_FW),
             via_device=(DOMAIN, f"{entry.entry_id}_{self.system_id}"),
         )
@@ -197,30 +191,29 @@ class AirzoneZoneEntity(AirzoneEntity):
 
     @property
     def available(self) -> bool:
-        """Return zone availability."""
-        return super().available and self.get_airzone_value(AZD_AVAILABLE)
+        """Retourne la disponibilité de la zone."""
+        return super().available and self.get_airzone_value(AZD_AVAILABLE) is not False
 
     def get_airzone_value(self, key: str) -> Any:
-        """Return zone value by key."""
+        """Retourne la valeur de la zone par clé."""
         value = None
-        if zone := self.coordinator.data[AZD_ZONES].get(self.system_zone_id):
+        if zone := self.coordinator.data.get(AZD_ZONES, {}).get(self.system_zone_id):
             if key in zone:
                 value = zone[key]
         return value
 
     async def _async_update_hvac_params(self, params: dict[str, Any]) -> None:
-        """Send HVAC parameters to API."""
-        _params = {
-            API_SYSTEM_ID: self.system_id,
-            API_ZONE_ID: self.zone_id,
-            **params,
-        }
-        _LOGGER.debug("update_hvac_params=%s", _params)
+        """Envoie les paramètres CVC de la zone via l'API RPC MQTT."""
+        _LOGGER.debug("update_hvac_params=%s", params)
         try:
-            await self.coordinator.airzone.set_hvac_parameters(_params)
-        except AirzoneError as error:
+            # Format RPC attendu pour une zone
+            rpc_params = {
+                "system_id": self.system_id,
+                "zone_id": self.zone_id,
+                "device_set_status": params
+            }
+            await self.coordinator.async_send_rpc("AzZoneSetStatus", rpc_params)
+        except Exception as error:
             raise HomeAssistantError(
-                f"Failed to set zone {self.entity_id}: {error}"
+                f"Échec de la commande de zone {self.entity_id}: {error}"
             ) from error
-
-        self.coordinator.async_set_updated_data(self.coordinator.airzone.data())

@@ -1,20 +1,17 @@
-"""Constants for the Airzone integration."""
+"""Constants for the Airzone MQTT integration."""
 
 from typing import Final
-
-from aioairzone.common import TemperatureUnit
 
 from homeassistant.const import UnitOfTemperature
 
 DOMAIN: Final = "airzone"
 MANUFACTURER: Final = "Airzone"
+CONF_TOPIC_PREFIX: Final = "topic_prefix"
 
-AIOAIRZONE_DEVICE_TIMEOUT_SEC: Final = 10
 API_TEMPERATURE_STEP: Final = 0.5
 
-DEFAULT_SCAN_INTERVAL: Final = 60
-
-TEMP_UNIT_LIB_TO_HASS: Final[dict[TemperatureUnit, str]] = {
-    TemperatureUnit.CELSIUS: UnitOfTemperature.CELSIUS,
-    TemperatureUnit.FAHRENHEIT: UnitOfTemperature.FAHRENHEIT,
+# Selon la doc API MQTT d'Airzone, 0 = Celsius, 1 = Fahrenheit
+TEMP_UNIT_MAP: Final[dict[int, str]] = {
+    0: UnitOfTemperature.CELSIUS,
+    1: UnitOfTemperature.FAHRENHEIT,
 }
