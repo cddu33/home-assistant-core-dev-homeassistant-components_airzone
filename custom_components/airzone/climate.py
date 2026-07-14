@@ -418,7 +418,7 @@ class AirzoneSystemClimate(AirzoneSystemEntity, ClimateEntity):
 
         # --- 2. Concaténation de l'action en cours ---
         # S'il y a au moins une zone qui chauffe ou refroidit, le système entier travaille
-        actions = [zone.get(AZ_ACTION) for* zone in self._system_zones() if zone.get(AZ_ACTION)]
+        actions = [zone.get(AZ_ACTION) for zone in self._system_zones() if zone.get(AZ_ACTION)]
         
         # On isole les actions actives en excluant les états de repos
         active_actions = [a for a in actions if a not in ("idle", "stop")]
