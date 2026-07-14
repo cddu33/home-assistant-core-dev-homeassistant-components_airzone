@@ -223,6 +223,30 @@ class AirzoneMqttCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         entry.update(self._flatten(device))
         entry.setdefault("zone_id", device_id)
 
+        if target == AZD_ZONES:
+            self._recompute_masters()
+
+    def _recompute_masters(self) -> None:
+        """Désigne une zone maître virtuelle par système.
+
+        Le protocole MQTT n'expose pas de notion de maître : on choisit la
+        zone qui porte la liste des modes disponibles (la machine), sinon la
+        zone au plus petit identifiant.
+        """
+        by_system: dict[Any, list[tuple[str, dict[str, Any]]]] = {}
+        for zkey, zone in self._data[AZD_ZONES].items():
+            by_system.setdefault(zone.get(API_SYSTEM_ID), []).append((zkey, zone))
+
+        for zones in by_system.values():
+            master_key = next(
+                (zkey for zkey, zone in zones if zone.get("mode_available")),
+                None,
+            )
+            if master_key is None:
+                master_key = min(zkey for zkey, _ in zones)
+            for zkey, zone in zones:
+                zone["master"] = zkey == master_key
+
     @staticmethod
     def _flatten(device: dict[str, Any]) -> dict[str, Any]:
         """Aplati meta + parameters d'un device en un dict plat pour les entités."""
