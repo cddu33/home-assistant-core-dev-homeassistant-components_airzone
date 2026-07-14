@@ -51,8 +51,10 @@ API_MIN = "min"
 API_MAX = "max"
 API_ONLINE = "online"
 
-# Délai d'attente de la réponse à l'invoke initial (secondes).
-POLL_TIMEOUT = 10
+# Récupération initiale : plusieurs tentatives courtes pour absorber la
+# course abonnement/publication au démarrage.
+STATUS_RETRIES = 4
+STATUS_RETRY_TIMEOUT = 4
 
 type AirzoneConfigEntry = ConfigEntry["AirzoneMqttCoordinator"]
 
@@ -132,38 +134,52 @@ class AirzoneMqttCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         return topic.replace(".", "_")
 
     async def async_request_status(self) -> None:
-        """Envoie l'invoke `az.get_status` et attend la réponse (devices)."""
-        self._req_id = self._new_req_id()
+        """Envoie l'invoke `az.get_status` et attend la réponse (devices).
+
+        On réessaie plusieurs fois : au démarrage, l'abonnement au topic de
+        réponse n'est pas toujours enregistré par le broker quand l'appareil
+        répond (réponse très rapide) — la première réponse peut être perdue.
+        """
         destination = f"{self.mqtt_prefix}/{AMT_RESPONSE}/{self._safe(API_AZ_GET_STATUS)}"
-
-        payload = {
-            API_HEADERS: {
-                API_CMD: API_AZ_GET_STATUS,
-                API_DESTINATION: destination,
-                API_REQ_ID: self._req_id,
-            },
-            API_BODY: None,
-        }
-
         invoke_topic = f"{self.mqtt_prefix}/{AMT_INVOKE}"
 
-        self._resp_event.clear()
-        _LOGGER.debug(
-            "Airzone MQTT: publish %s -> %s", invoke_topic, json.dumps(payload)
-        )
-        await mqtt.async_publish(self.hass, invoke_topic, json.dumps(payload), qos=0)
+        for attempt in range(STATUS_RETRIES):
+            self._req_id = self._new_req_id()
+            payload = {
+                API_HEADERS: {
+                    API_CMD: API_AZ_GET_STATUS,
+                    API_DESTINATION: destination,
+                    API_REQ_ID: self._req_id,
+                },
+                API_BODY: None,
+            }
 
-        try:
-            async with asyncio.timeout(POLL_TIMEOUT):
-                await self._resp_event.wait()
-        except TimeoutError:
-            _LOGGER.warning(
-                "Airzone MQTT: pas de réponse à az.get_status "
-                "(envoyé sur %s, réponse attendue sur %s). "
-                "Les devices apparaîtront à la réception d'évènements",
+            self._resp_event.clear()
+            _LOGGER.debug(
+                "Airzone MQTT: publish (tentative %d) %s -> %s",
+                attempt + 1,
                 invoke_topic,
-                destination,
+                json.dumps(payload),
             )
+            await mqtt.async_publish(
+                self.hass, invoke_topic, json.dumps(payload), qos=0
+            )
+
+            try:
+                async with asyncio.timeout(STATUS_RETRY_TIMEOUT):
+                    await self._resp_event.wait()
+                return
+            except TimeoutError:
+                continue
+
+        _LOGGER.warning(
+            "Airzone MQTT: pas de réponse à az.get_status après %d tentatives "
+            "(envoyé sur %s, réponse attendue sur %s). "
+            "Les devices apparaîtront à la réception d'évènements",
+            STATUS_RETRIES,
+            invoke_topic,
+            destination,
+        )
 
     # ------------------------------------------------------------------
     # Réception / parsing
