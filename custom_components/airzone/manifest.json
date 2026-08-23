@@ -13,5 +13,5 @@
   "iot_class": "local_polling",
   "loggers": ["aioairzone"],
   "requirements": ["aioairzone==1.0.5"],
-  "version": "1.0.5-custom"
+  "version": "1.0.6-custom"
 }

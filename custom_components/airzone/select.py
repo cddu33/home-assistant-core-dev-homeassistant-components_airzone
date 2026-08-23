@@ -377,7 +377,7 @@ class AirzoneSystemZonesSelect(AirzoneSystemEntity, AirzoneBaseSelect):
             zone for zone in zones.values() if zone.get(AZD_SYSTEM) == self.system_id
         ]
 
-    def get_airzone_value(self, key: str) -> Any:
+    def _zone_value(self, key: str) -> Any:
         """Return a representative value from the master zone of the system."""
         zones = self._system_zones()
         for zone in zones:
@@ -385,12 +385,22 @@ class AirzoneSystemZonesSelect(AirzoneSystemEntity, AirzoneBaseSelect):
                 return zone.get(key)
         return zones[0].get(key) if zones else None
 
+    def _get_current_option(self) -> str | None:
+        value = self._zone_value(self.entity_description.key)
+        return self.values_dict.get(value)
+
     async def async_select_option(self, option: str) -> None:
-        """Apply the selected option to every zone of the system (fan-out)."""
+        """Apply the selected option to every zone that supports it (fan-out)."""
         param = self.entity_description.api_param
+        key = self.entity_description.key
         value = self.entity_description.options_dict[option]
         try:
             for zone in self._system_zones():
+                if key not in zone:
+                    # This zone doesn't expose the parameter (e.g. no
+                    # physical thermostat), skip it instead of sending an
+                    # unsupported/invalid value.
+                    continue
                 await self.coordinator.airzone.set_hvac_parameters(
                     {
                         API_SYSTEM_ID: zone[AZD_SYSTEM],
