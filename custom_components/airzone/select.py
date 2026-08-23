@@ -166,6 +166,26 @@ SYSTEM_ZONES_SELECT_TYPES: Final[tuple[AirzoneSelectDescription, ...]] = (
         options_dict=SLEEP_DICT,
         translation_key="all_zones_sleep",
     ),
+    # Eco-Adapt is only present in the zone-level JSON returned by the
+    # webserver (confirmed via a real diagnostics dump), not the system
+    # level one, so it has to be written as a zone param, not a system one
+    # — but changing it in the Airzone app affects the whole system at
+    # once (confirmed by the user), so it's modeled as a fan-out select
+    # like sleep, not a separate select per zone.
+    # It's also not in aioairzone's API_ZONE_PARAMS allow-list, so a
+    # successful write won't be reflected in the library's local cache
+    # until the next poll — see the optimistic update in
+    # AirzoneSystemZonesSelect.async_select_option.
+    # Disabled by default until confirmed to be honored by real hardware.
+    AirzoneSelectDescription(
+        api_param=API_ECO_ADAPT,
+        entity_category=EntityCategory.CONFIG,
+        entity_registry_enabled_default=False,
+        key=AZD_ECO_ADAPT,
+        options=list(ECO_ADAPT_DICT),
+        options_dict=ECO_ADAPT_DICT,
+        translation_key="all_zones_eco_adapt",
+    ),
 )
 
 
@@ -220,22 +240,6 @@ ZONE_SELECT_TYPES: Final[tuple[AirzoneSelectDescription, ...]] = (
         options_dict=HEAT_STAGE_DICT,
         options_fn=heat_stage_options,
         translation_key="heat_stage",
-    ),
-    # Eco-Adapt is only present in the zone-level JSON returned by the
-    # webserver (confirmed via a real diagnostics dump), not the system
-    # level one, so it has to be written as a zone param, not a system one.
-    # It's also not in aioairzone's API_ZONE_PARAMS allow-list, so a
-    # successful write won't be reflected in the library's local cache until
-    # the next poll — see the optimistic update in async_select_option.
-    # Disabled by default until confirmed to be honored by real hardware.
-    AirzoneSelectDescription(
-        api_param=API_ECO_ADAPT,
-        entity_category=EntityCategory.CONFIG,
-        entity_registry_enabled_default=False,
-        key=AZD_ECO_ADAPT,
-        options=list(ECO_ADAPT_DICT),
-        options_dict=ECO_ADAPT_DICT,
-        translation_key="eco_adapt",
     ),
 )
 
@@ -442,6 +446,15 @@ class AirzoneSystemZonesSelect(AirzoneSystemEntity, AirzoneBaseSelect):
 
         self.coordinator.async_set_updated_data(self.coordinator.airzone.data())
 
+        if key == AZD_ECO_ADAPT:
+            # eco_adapt isn't in aioairzone's API_ZONE_PARAMS allow-list, so
+            # the coordinator data set above won't actually reflect this
+            # write until the next real poll. Update the displayed state
+            # optimistically so it doesn't look stuck on the previous value
+            # in the meantime (worse if polling is disabled).
+            self._attr_current_option = option
+            self.async_write_ha_state()
+
 
 class AirzoneZoneSelect(AirzoneZoneEntity, AirzoneBaseSelect):
     """Define an Airzone Zone select."""
@@ -481,12 +494,3 @@ class AirzoneZoneSelect(AirzoneZoneEntity, AirzoneBaseSelect):
         param = self.entity_description.api_param
         value = self.entity_description.options_dict[option]
         await self._async_update_hvac_params({param: value})
-
-        if self.entity_description.key == AZD_ECO_ADAPT:
-            # eco_adapt isn't in aioairzone's API_ZONE_PARAMS allow-list, so
-            # the coordinator's cached data above won't reflect this write
-            # until the next poll. Update the displayed state optimistically
-            # so it doesn't look stuck on the previous value in the
-            # meantime (worse if polling is disabled).
-            self._attr_current_option = option
-            self.async_write_ha_state()
