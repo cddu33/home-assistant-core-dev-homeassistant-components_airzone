@@ -51,6 +51,16 @@
       }
     },
     "select": {
+      "all_zones_eco_adapt": {
+        "name": "Eco-Adapt (toutes les zones)",
+        "state": {
+          "a": "[%key:component::airzone::entity::sensor::eco_adapt::state::a%]",
+          "a_p": "[%key:component::airzone::entity::sensor::eco_adapt::state::a_p%]",
+          "a_pp": "[%key:component::airzone::entity::sensor::eco_adapt::state::a_pp%]",
+          "manual": "[%key:component::airzone::entity::sensor::eco_adapt::state::manual%]",
+          "off": "Désactivé"
+        }
+      },
       "all_zones_sleep": {
         "name": "Veille (toutes les zones)",
         "state": {
@@ -66,16 +76,6 @@
           "air": "Air",
           "combined": "Combiné",
           "radiant": "Rayonnant"
-        }
-      },
-      "eco_adapt": {
-        "name": "Eco-Adapt",
-        "state": {
-          "a": "[%key:component::airzone::entity::sensor::eco_adapt::state::a%]",
-          "a_p": "[%key:component::airzone::entity::sensor::eco_adapt::state::a_p%]",
-          "a_pp": "[%key:component::airzone::entity::sensor::eco_adapt::state::a_pp%]",
-          "manual": "[%key:component::airzone::entity::sensor::eco_adapt::state::manual%]",
-          "off": "Désactivé"
         }
       },
       "grille_angles": {
