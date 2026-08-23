@@ -1,7 +1,7 @@
 {
   "domain": "airzone",
   "name": "Airzone",
-  "codeowners": ["@Noltari"],
+  "codeowners": ["@cddu33"],
   "config_flow": true,
   "dhcp": [
     {

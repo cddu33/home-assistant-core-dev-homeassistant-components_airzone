@@ -2,7 +2,9 @@
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
 
-Custom integration for [Airzone](https://www.airzone.es/) HVAC systems via local API.
+Custom integration for [Airzone](https://www.airzone.es/) HVAC systems via local API 
+Code Owner official release: @Noltary
+
 
 ## Installation via HACS
 
