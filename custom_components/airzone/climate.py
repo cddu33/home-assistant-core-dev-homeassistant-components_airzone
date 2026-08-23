@@ -1,6 +1,6 @@
 """Support for the Airzone climate."""
 
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from typing import Any, Final
 
 from aioairzone.common import OperationAction, OperationMode
@@ -127,6 +127,19 @@ HVAC_MODE_HASS_TO_LIB: Final[dict[HVACMode, OperationMode]] = {
     HVACMode.DRY: OperationMode.DRY,
     HVACMode.HEAT_COOL: OperationMode.AUTO,
 }
+
+# Priority order used to pick a single representative action out of all the
+# zones of a system: an active demand always takes priority over idle/off,
+# so the global "all zones" entity reflects real activity happening
+# anywhere in the system.
+ACTION_PRIORITY: Final[list[OperationAction]] = [
+    OperationAction.HEATING,
+    OperationAction.COOLING,
+    OperationAction.DRYING,
+    OperationAction.FAN,
+    OperationAction.IDLE,
+    OperationAction.OFF,
+]
 
 
 async def async_setup_entry(
@@ -425,6 +438,32 @@ class AirzoneSystemClimate(AirzoneSystemEntity, ClimateEntity):
             return None
         return round(sum(values) / len(values), 1)
 
+    def _zones_extreme(
+        self, key: str, func: Callable[[list[float]], float]
+    ) -> float | None:
+        """Return func (min/max) of a numeric key across all zones that expose it."""
+        values = [
+            zone[key] for zone in self._system_zones() if zone.get(key) is not None
+        ]
+        return func(values) if values else None
+
+    def _zones_action(self) -> OperationAction | None:
+        """Return the most relevant action across all zones.
+
+        Any zone actively heating/cooling/drying/running its fan takes
+        priority over an idle or off zone, so the global entity reflects
+        real system activity instead of only the master zone's own action.
+        """
+        actions = {
+            zone[AZD_ACTION]
+            for zone in self._system_zones()
+            if zone.get(AZD_ACTION) is not None
+        }
+        for action in ACTION_PRIORITY:
+            if action in actions:
+                return action
+        return None
+
     def _set_fan_speeds(self) -> None:
         self._attr_supported_features |= ClimateEntityFeature.FAN_MODE
 
@@ -534,14 +573,23 @@ class AirzoneSystemClimate(AirzoneSystemEntity, ClimateEntity):
 
     @callback
     def _async_update_attrs(self) -> None:
-        """Update global climate attributes."""
+        """Update global climate attributes.
+
+        Current temperature/humidity, action and target temperature(s) are
+        combined across every zone of the system (not just mirrored from
+        the master zone), so this entity reflects the system as a whole.
+        Only the HVAC mode (a genuinely system-wide setting in Airzone,
+        shared by all zones) and the fan mode (no meaningful "average"
+        across zones with different, possibly incompatible speed ranges —
+        see async_set_fan_mode) are still derived from the master zone.
+        """
         self._attr_current_temperature = self._zones_average(AZD_TEMP)
         humidity = self._zones_average(AZD_HUMIDITY)
         self._attr_current_humidity = (
             int(round(humidity)) if humidity is not None else None
         )
 
-        action = self._master_value(AZD_ACTION)
+        action = self._zones_action()
         self._attr_hvac_action = (
             HVAC_ACTION_LIB_TO_HASS.get(action) if action is not None else None
         )
@@ -553,8 +601,10 @@ class AirzoneSystemClimate(AirzoneSystemEntity, ClimateEntity):
         else:
             self._attr_hvac_mode = HVACMode.OFF
 
-        self._attr_max_temp = self._master_value(AZD_TEMP_MAX)
-        self._attr_min_temp = self._master_value(AZD_TEMP_MIN)
+        # Most restrictive range across zones, so a temperature accepted by
+        # this entity is always valid for every zone it fans out to.
+        self._attr_max_temp = self._zones_extreme(AZD_TEMP_MAX, min)
+        self._attr_min_temp = self._zones_extreme(AZD_TEMP_MIN, max)
 
         if self.supported_features & ClimateEntityFeature.FAN_MODE:
             self._attr_fan_mode = self._speeds.get(self._master_value(AZD_SPEED))
@@ -563,10 +613,12 @@ class AirzoneSystemClimate(AirzoneSystemEntity, ClimateEntity):
             self.supported_features & ClimateEntityFeature.TARGET_TEMPERATURE_RANGE
             and self._attr_hvac_mode == HVACMode.HEAT_COOL
         ):
-            self._attr_target_temperature_high = self._master_value(AZD_COOL_TEMP_SET)
-            self._attr_target_temperature_low = self._master_value(AZD_HEAT_TEMP_SET)
+            self._attr_target_temperature_high = self._zones_average(
+                AZD_COOL_TEMP_SET
+            )
+            self._attr_target_temperature_low = self._zones_average(AZD_HEAT_TEMP_SET)
             self._attr_target_temperature = None
         else:
             self._attr_target_temperature_high = None
             self._attr_target_temperature_low = None
-            self._attr_target_temperature = self._master_value(AZD_TEMP_SET)
+            self._attr_target_temperature = self._zones_average(AZD_TEMP_SET)
