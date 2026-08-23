@@ -54,10 +54,10 @@
       "all_zones_eco_adapt": {
         "name": "Eco-Adapt (toutes les zones)",
         "state": {
-          "a": "[%key:component::airzone::entity::sensor::eco_adapt::state::a%]",
-          "a_p": "[%key:component::airzone::entity::sensor::eco_adapt::state::a_p%]",
-          "a_pp": "[%key:component::airzone::entity::sensor::eco_adapt::state::a_pp%]",
-          "manual": "[%key:component::airzone::entity::sensor::eco_adapt::state::manual%]",
+          "a": "A",
+          "a_p": "A+",
+          "a_pp": "A++",
+          "manual": "Manuel",
           "off": "Désactivé"
         }
       },
@@ -136,16 +136,6 @@
       }
     },
     "sensor": {
-      "eco_adapt": {
-        "name": "Eco-Adapt",
-        "state": {
-          "a": "A",
-          "a_p": "A+",
-          "a_pp": "A++",
-          "manual": "Manuel",
-          "off": "Désactivé"
-        }
-      },
       "power": {
         "name": "Puissance"
       },
