@@ -1,5 +1,6 @@
 """Support for the Airzone climate."""
 
+from collections.abc import Iterable
 from typing import Any, Final
 
 from aioairzone.common import OperationAction, OperationMode
@@ -73,6 +74,33 @@ FAN_SPEED_MAPS: Final[dict[int, dict[int, str]]] = {
         3: FAN_HIGH,
     },
 }
+
+
+def _build_speed_map(speeds: Iterable[int]) -> dict[int, str]:
+    """Build a fan-speed-to-label map for an arbitrary speed range.
+
+    Returns a fresh dict every time so callers never share mutable state
+    across zones with different (or unusual) speed ranges.
+    """
+    speeds = list(speeds)
+    max_speed = max(speeds)
+
+    if mapped := FAN_SPEED_MAPS.get(max_speed):
+        return dict(mapped)
+
+    speed_map: dict[int, str] = {}
+    for speed in speeds:
+        if speed == 0:
+            speed_map[speed] = FAN_AUTO
+        else:
+            speed_map[speed] = f"{int(round((speed * 100) / max_speed, 0))}%"
+
+    speed_map[1] = FAN_LOW
+    speed_map[int(round((max_speed + 1) / 2, 0))] = FAN_MEDIUM
+    speed_map[max_speed] = FAN_HIGH
+
+    return speed_map
+
 
 HVAC_ACTION_LIB_TO_HASS: Final[dict[OperationAction, HVACAction]] = {
     OperationAction.COOLING: HVACAction.COOLING,
@@ -157,8 +185,8 @@ class AirzoneClimate(AirzoneZoneEntity, ClimateEntity):
     """Define an Airzone sensor."""
 
     _attr_name = None
-    _speeds: dict[int, str] = {}
-    _speeds_reverse: dict[str, int] = {}
+    _speeds: dict[int, str]
+    _speeds_reverse: dict[str, int]
 
     def __init__(
         self,
@@ -217,20 +245,7 @@ class AirzoneClimate(AirzoneZoneEntity, ClimateEntity):
         self._attr_supported_features |= ClimateEntityFeature.FAN_MODE
 
         speeds = self.get_airzone_value(AZD_SPEEDS)
-        max_speed = max(speeds)
-        if _speeds := FAN_SPEED_MAPS.get(max_speed):
-            self._speeds = _speeds
-        else:
-            for speed in speeds:
-                if speed == 0:
-                    self._speeds[speed] = FAN_AUTO
-                else:
-                    self._speeds[speed] = f"{int(round((speed * 100) / max_speed, 0))}%"
-
-            self._speeds[1] = FAN_LOW
-            self._speeds[int(round((max_speed + 1) / 2, 0))] = FAN_MEDIUM
-            self._speeds[max_speed] = FAN_HIGH
-
+        self._speeds = _build_speed_map(speeds)
         self._speeds_reverse = {v: k for k, v in self._speeds.items()}
         self._attr_fan_modes = list(self._speeds_reverse)
 
@@ -285,7 +300,8 @@ class AirzoneClimate(AirzoneZoneEntity, ClimateEntity):
         if ATTR_TARGET_TEMP_LOW in kwargs and ATTR_TARGET_TEMP_HIGH in kwargs:
             params[API_COOL_SET_POINT] = kwargs[ATTR_TARGET_TEMP_HIGH]
             params[API_HEAT_SET_POINT] = kwargs[ATTR_TARGET_TEMP_LOW]
-        await self._async_update_hvac_params(params)
+        if params:
+            await self._async_update_hvac_params(params)
 
         if ATTR_HVAC_MODE in kwargs:
             await self.async_set_hvac_mode(kwargs[ATTR_HVAC_MODE])
@@ -413,20 +429,7 @@ class AirzoneSystemClimate(AirzoneSystemEntity, ClimateEntity):
         self._attr_supported_features |= ClimateEntityFeature.FAN_MODE
 
         speeds = self._master_value(AZD_SPEEDS)
-        max_speed = max(speeds)
-        if _speeds := FAN_SPEED_MAPS.get(max_speed):
-            self._speeds = _speeds
-        else:
-            for speed in speeds:
-                if speed == 0:
-                    self._speeds[speed] = FAN_AUTO
-                else:
-                    self._speeds[speed] = f"{int(round((speed * 100) / max_speed, 0))}%"
-
-            self._speeds[1] = FAN_LOW
-            self._speeds[int(round((max_speed + 1) / 2, 0))] = FAN_MEDIUM
-            self._speeds[max_speed] = FAN_HIGH
-
+        self._speeds = _build_speed_map(speeds)
         self._speeds_reverse = {v: k for k, v in self._speeds.items()}
         self._attr_fan_modes = list(self._speeds_reverse)
 
@@ -458,12 +461,40 @@ class AirzoneSystemClimate(AirzoneSystemEntity, ClimateEntity):
         await self._async_set_zones_params(self._system_zones(), {API_ON: 0})
 
     async def async_set_fan_mode(self, fan_mode: str) -> None:
-        """Set fan mode on every zone that supports speeds."""
-        speed = self._speeds_reverse.get(fan_mode)
-        zones = [
-            zone for zone in self._system_zones() if zone.get(AZD_SPEEDS) is not None
-        ]
-        await self._async_set_zones_params(zones, {API_SPEED: speed})
+        """Set fan mode on every zone that supports speeds.
+
+        Each zone can expose its own speed range (different model/capability
+        than the master zone), so the requested fan mode is translated to
+        every zone's own native speed value instead of reusing the master
+        zone's raw numeric speed everywhere.
+        """
+        try:
+            for zone in self._system_zones():
+                speeds = zone.get(AZD_SPEEDS)
+                if speeds is None:
+                    continue
+                zone_speeds_reverse = {
+                    v: k for k, v in _build_speed_map(speeds).items()
+                }
+                speed = zone_speeds_reverse.get(fan_mode)
+                if speed is None:
+                    # This zone doesn't have a matching speed for the
+                    # requested mode (different granularity than the master
+                    # zone); leave it at its current speed.
+                    continue
+                await self.coordinator.airzone.set_hvac_parameters(
+                    {
+                        API_SYSTEM_ID: zone[AZD_SYSTEM],
+                        API_ZONE_ID: zone[AZD_ID],
+                        API_SPEED: speed,
+                    }
+                )
+        except AirzoneError as error:
+            raise HomeAssistantError(
+                f"Failed to set system {self.entity_id}: {error}"
+            ) from error
+
+        self.coordinator.async_set_updated_data(self.coordinator.airzone.data())
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """Set hvac mode for all zones."""
