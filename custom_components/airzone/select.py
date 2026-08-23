@@ -6,6 +6,7 @@ from typing import Any, Final
 
 from aioairzone.common import (
     AirzoneStages,
+    EcoAdapt,
     GrilleAngle,
     OperationMode,
     QAdapt,
@@ -14,6 +15,7 @@ from aioairzone.common import (
 from aioairzone.const import (
     API_COLD_ANGLE,
     API_COLD_STAGE,
+    API_ECO_ADAPT,
     API_HEAT_ANGLE,
     API_HEAT_STAGE,
     API_MODE,
@@ -24,6 +26,7 @@ from aioairzone.const import (
     AZD_COLD_ANGLE,
     AZD_COLD_STAGE,
     AZD_COLD_STAGES,
+    AZD_ECO_ADAPT,
     AZD_HEAT_ANGLE,
     AZD_HEAT_STAGE,
     AZD_HEAT_STAGES,
@@ -55,8 +58,8 @@ class AirzoneSelectDescription(SelectEntityDescription):
     """Class to describe an Airzone select entity."""
 
     api_param: str
-    options_dict: dict[str, int]
-    options_fn: Callable[[dict[str, Any], dict[str, int]], list[str]] = (
+    options_dict: dict[str, int | str]
+    options_fn: Callable[[dict[str, Any], dict[str, int | str]], list[str]] = (
         lambda zone_data, value: list(value)
     )
 
@@ -104,6 +107,14 @@ HEAT_STAGE_DICT: Final[dict[str, int]] = {
     "combined": AirzoneStages.Combined,
 }
 
+ECO_ADAPT_DICT: Final[dict[str, str]] = {
+    "off": EcoAdapt.OFF,
+    "manual": EcoAdapt.MANUAL,
+    "a": EcoAdapt.A,
+    "a_p": EcoAdapt.A_PLUS,
+    "a_pp": EcoAdapt.A_PLUS_PLUS,
+}
+
 
 def main_zone_options(
     zone_data: dict[str, Any],
@@ -140,6 +151,19 @@ SYSTEM_SELECT_TYPES: Final[tuple[AirzoneSelectDescription, ...]] = (
         options=list(Q_ADAPT_DICT),
         options_dict=Q_ADAPT_DICT,
         translation_key="q_adapt",
+    ),
+    # Eco-Adapt is not in aioairzone's API_SYSTEM_PARAMS allow-list, so a
+    # successful write won't be reflected in the library's local cache until
+    # the next poll (up to DEFAULT_SCAN_INTERVAL). Disabled by default until
+    # confirmed to be honored by real hardware.
+    AirzoneSelectDescription(
+        api_param=API_ECO_ADAPT,
+        entity_category=EntityCategory.CONFIG,
+        entity_registry_enabled_default=False,
+        key=AZD_ECO_ADAPT,
+        options=list(ECO_ADAPT_DICT),
+        options_dict=ECO_ADAPT_DICT,
+        translation_key="eco_adapt",
     ),
 )
 
@@ -298,7 +322,7 @@ class AirzoneBaseSelect(AirzoneEntity, SelectEntity):
     """Define an Airzone select."""
 
     entity_description: AirzoneSelectDescription
-    values_dict: dict[int, str]
+    values_dict: dict[int | str, str]
 
     @callback
     def _handle_coordinator_update(self) -> None:
