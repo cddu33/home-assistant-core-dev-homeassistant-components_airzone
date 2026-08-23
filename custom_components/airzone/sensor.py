@@ -3,7 +3,6 @@
 from typing import Any, Final
 
 from aioairzone.const import (
-    AZD_ECO_ADAPT,
     AZD_ENERGY,
     AZD_HOT_WATER,
     AZD_HUMIDITY,
@@ -56,13 +55,6 @@ HOT_WATER_SENSOR_TYPES: Final[tuple[SensorEntityDescription, ...]] = (
 )
 
 SYSTEM_SENSOR_TYPES: Final[tuple[SensorEntityDescription, ...]] = (
-    SensorEntityDescription(
-        device_class=SensorDeviceClass.ENUM,
-        entity_category=EntityCategory.DIAGNOSTIC,
-        key=AZD_ECO_ADAPT,
-        options=["off", "manual", "a", "a_p", "a_pp"],
-        translation_key="eco_adapt",
-    ),
     SensorEntityDescription(
         device_class=SensorDeviceClass.POWER,
         key=AZD_ENERGY,

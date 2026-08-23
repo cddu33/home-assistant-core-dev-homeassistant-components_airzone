@@ -1,25 +1,25 @@
 {
   "config": {
     "abort": {
-      "already_configured": "[%key:common::config_flow::abort::already_configured_device%]"
+      "already_configured": "Device is already configured"
     },
     "error": {
-      "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]",
+      "cannot_connect": "Failed to connect",
       "invalid_system_id": "Invalid Airzone System ID"
     },
     "step": {
       "discovered_connection": {
         "data": {
-          "host": "[%key:common::config_flow::data::host%]",
-          "id": "[%key:component::airzone::config::step::user::data::id%]",
-          "port": "[%key:common::config_flow::data::port%]"
+          "host": "Host",
+          "id": "System ID",
+          "port": "Port"
         }
       },
       "user": {
         "data": {
-          "host": "[%key:common::config_flow::data::host%]",
+          "host": "Host",
           "id": "System ID",
-          "port": "[%key:common::config_flow::data::port%]"
+          "port": "Port"
         }
       }
     }
@@ -54,20 +54,20 @@
       "all_zones_eco_adapt": {
         "name": "Eco-Adapt (all zones)",
         "state": {
-          "a": "[%key:component::airzone::entity::sensor::eco_adapt::state::a%]",
-          "a_p": "[%key:component::airzone::entity::sensor::eco_adapt::state::a_p%]",
-          "a_pp": "[%key:component::airzone::entity::sensor::eco_adapt::state::a_pp%]",
-          "manual": "[%key:component::airzone::entity::sensor::eco_adapt::state::manual%]",
-          "off": "[%key:common::state::off%]"
+          "a": "A",
+          "a_p": "A+",
+          "a_pp": "A++",
+          "manual": "Manual",
+          "off": "Off"
         }
       },
       "all_zones_sleep": {
         "name": "Sleep (all zones)",
         "state": {
-          "30m": "[%key:component::airzone::entity::select::sleep_times::state::30m%]",
-          "60m": "[%key:component::airzone::entity::select::sleep_times::state::60m%]",
-          "90m": "[%key:component::airzone::entity::select::sleep_times::state::90m%]",
-          "off": "[%key:common::state::off%]"
+          "30m": "30 minutes",
+          "60m": "60 minutes",
+          "90m": "90 minutes",
+          "off": "Off"
         }
       },
       "cold_stage": {
@@ -90,28 +90,28 @@
       "heat_angles": {
         "name": "Heat angle",
         "state": {
-          "40deg": "[%key:component::airzone::entity::select::grille_angles::state::40deg%]",
-          "45deg": "[%key:component::airzone::entity::select::grille_angles::state::45deg%]",
-          "50deg": "[%key:component::airzone::entity::select::grille_angles::state::50deg%]",
-          "90deg": "[%key:component::airzone::entity::select::grille_angles::state::90deg%]"
+          "40deg": "40°",
+          "45deg": "45°",
+          "50deg": "50°",
+          "90deg": "90°"
         }
       },
       "heat_stage": {
         "name": "Heating emission type",
         "state": {
-          "air": "[%key:component::airzone::entity::select::cold_stage::state::air%]",
-          "combined": "[%key:component::airzone::entity::select::cold_stage::state::combined%]",
-          "radiant": "[%key:component::airzone::entity::select::cold_stage::state::radiant%]"
+          "air": "Air",
+          "combined": "Combined",
+          "radiant": "Radiant"
         }
       },
       "modes": {
         "name": "Mode",
         "state": {
-          "cool": "[%key:component::climate::entity_component::_::state::cool%]",
-          "dry": "[%key:component::climate::entity_component::_::state::dry%]",
-          "fan": "[%key:component::climate::entity_component::_::state::fan_only%]",
-          "heat": "[%key:component::climate::entity_component::_::state::heat%]",
-          "heat_cool": "[%key:component::climate::entity_component::_::state::heat_cool%]",
+          "cool": "Cool",
+          "dry": "Dry",
+          "fan": "Fan only",
+          "heat": "Heat",
+          "heat_cool": "Heat/Cool",
           "stop": "Stop"
         }
       },
@@ -131,21 +131,11 @@
           "30m": "30 minutes",
           "60m": "60 minutes",
           "90m": "90 minutes",
-          "off": "[%key:common::state::off%]"
+          "off": "Off"
         }
       }
     },
     "sensor": {
-      "eco_adapt": {
-        "name": "Eco-Adapt",
-        "state": {
-          "a": "A",
-          "a_p": "A+",
-          "a_pp": "A++",
-          "manual": "Manual",
-          "off": "[%key:common::state::off%]"
-        }
-      },
       "power": {
         "name": "Power"
       },
