@@ -68,6 +68,16 @@
           "radiant": "Rayonnant"
         }
       },
+      "eco_adapt": {
+        "name": "Eco-Adapt",
+        "state": {
+          "a": "[%key:component::airzone::entity::sensor::eco_adapt::state::a%]",
+          "a_p": "[%key:component::airzone::entity::sensor::eco_adapt::state::a_p%]",
+          "a_pp": "[%key:component::airzone::entity::sensor::eco_adapt::state::a_pp%]",
+          "manual": "[%key:component::airzone::entity::sensor::eco_adapt::state::manual%]",
+          "off": "Désactivé"
+        }
+      },
       "grille_angles": {
         "name": "Angle de froid",
         "state": {
