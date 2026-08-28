@@ -21,8 +21,6 @@ from aioairzone.const import (
     API_MODE,
     API_Q_ADAPT,
     API_SLEEP,
-    API_SYSTEM_ID,
-    API_ZONE_ID,
     AZD_COLD_ANGLE,
     AZD_COLD_STAGE,
     AZD_COLD_STAGES,
@@ -30,23 +28,19 @@ from aioairzone.const import (
     AZD_HEAT_ANGLE,
     AZD_HEAT_STAGE,
     AZD_HEAT_STAGES,
-    AZD_ID,
     AZD_MASTER,
     AZD_MODE,
     AZD_MODES,
     AZD_Q_ADAPT,
     AZD_SLEEP,
-    AZD_SYSTEM,
     AZD_SYSTEMS,
     AZD_ZONES,
 )
-from aioairzone.exceptions import AirzoneError
 
 from homeassistant.components.select import SelectEntity, SelectEntityDescription
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .coordinator import AirzoneConfigEntry, AirzoneUpdateCoordinator
@@ -282,6 +276,7 @@ async def async_setup_entry(
                     description,
                     entry,
                     system_id,
+                    systems_data[system_id],
                 )
                 for system_id in new_systems
                 for description in SYSTEM_ZONES_SELECT_TYPES
@@ -319,7 +314,8 @@ async def async_setup_entry(
             )
             added_zones.update(new_zones)
 
-        async_add_entities(entities)
+        if entities:
+            async_add_entities(entities)
 
     entry.async_on_unload(coordinator.async_add_listener(_async_entity_listener))
     _async_entity_listener()
@@ -388,9 +384,10 @@ class AirzoneSystemZonesSelect(AirzoneSystemEntity, AirzoneBaseSelect):
         description: AirzoneSelectDescription,
         entry: ConfigEntry,
         system_id: str,
+        system_data: dict[str, Any],
     ) -> None:
         """Initialize."""
-        super().__init__(coordinator, entry, coordinator.data[AZD_SYSTEMS][system_id])
+        super().__init__(coordinator, entry, system_data)
 
         self._attr_unique_id = (
             f"{self._attr_unique_id}_{system_id}_all_zones_{description.key}"
@@ -401,23 +398,9 @@ class AirzoneSystemZonesSelect(AirzoneSystemEntity, AirzoneBaseSelect):
 
         self._async_update_attrs()
 
-    def _system_zones(self) -> list[dict[str, Any]]:
-        """Return the data of every zone belonging to this system."""
-        zones = self.coordinator.data.get(AZD_ZONES, {})
-        return [
-            zone for zone in zones.values() if zone.get(AZD_SYSTEM) == self.system_id
-        ]
-
-    def _zone_value(self, key: str) -> Any:
-        """Return a representative value from the master zone of the system."""
-        zones = self._system_zones()
-        for zone in zones:
-            if zone.get(AZD_MASTER):
-                return zone.get(key)
-        return zones[0].get(key) if zones else None
-
     def _get_current_option(self) -> str | None:
-        value = self._zone_value(self.entity_description.key)
+        master = self.master_zone()
+        value = master.get(self.entity_description.key) if master else None
         return self.values_dict.get(value)
 
     async def async_select_option(self, option: str) -> None:
@@ -425,26 +408,11 @@ class AirzoneSystemZonesSelect(AirzoneSystemEntity, AirzoneBaseSelect):
         param = self.entity_description.api_param
         key = self.entity_description.key
         value = self.entity_description.options_dict[option]
-        try:
-            for zone in self._system_zones():
-                if key not in zone:
-                    # This zone doesn't expose the parameter (e.g. no
-                    # physical thermostat), skip it instead of sending an
-                    # unsupported/invalid value.
-                    continue
-                await self.coordinator.airzone.set_hvac_parameters(
-                    {
-                        API_SYSTEM_ID: zone[AZD_SYSTEM],
-                        API_ZONE_ID: zone[AZD_ID],
-                        param: value,
-                    }
-                )
-        except AirzoneError as error:
-            raise HomeAssistantError(
-                f"Failed to set system {self.entity_id}: {error}"
-            ) from error
 
-        self.coordinator.async_set_updated_data(self.coordinator.airzone.data())
+        # A zone that doesn't expose the parameter (e.g. no physical
+        # thermostat) is skipped rather than sent an unsupported value.
+        zones = [zone for zone in self.system_zones() if key in zone]
+        await self._async_fanout_zone_params(zones, {param: value})
 
         if key == AZD_ECO_ADAPT:
             # eco_adapt isn't in aioairzone's API_ZONE_PARAMS allow-list, so

@@ -1,6 +1,8 @@
 """Support for the Airzone climate."""
 
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
+from functools import cache
+from types import MappingProxyType
 from typing import Any, Final
 
 from aioairzone.common import OperationAction, OperationMode
@@ -57,7 +59,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .const import API_TEMPERATURE_STEP, TEMP_UNIT_LIB_TO_HASS
 from .coordinator import AirzoneConfigEntry, AirzoneUpdateCoordinator
-from .entity import AirzoneSystemEntity, AirzoneZoneEntity
+from .entity import AirzoneSystemEntity, AirzoneZoneEntity, zone_needs_write
 
 BASE_FAN_SPEEDS: Final[dict[int, str]] = {
     0: FAN_AUTO,
@@ -100,6 +102,18 @@ def _build_speed_map(speeds: Iterable[int]) -> dict[int, str]:
     speed_map[max_speed] = FAN_HIGH
 
     return speed_map
+
+
+@cache
+def _speed_reverse_map(speeds: tuple[int, ...]) -> Mapping[str, int]:
+    """Return the label-to-speed map for a speed range, memoized.
+
+    The system-wide fan-out translates the requested mode into each zone's own
+    speed value, and zones overwhelmingly share the same range; building the
+    map once per distinct range keeps that loop off the hot path. Read-only,
+    hence the proxy: callers that keep a mutable copy use _build_speed_map.
+    """
+    return MappingProxyType({v: k for k, v in _build_speed_map(speeds).items()})
 
 
 HVAC_ACTION_LIB_TO_HASS: Final[dict[OperationAction, HVACAction]] = {
@@ -188,7 +202,8 @@ async def async_setup_entry(
             )
             added_zones.update(new_zones)
 
-        async_add_entities(entities)
+        if entities:
+            async_add_entities(entities)
 
     entry.async_on_unload(coordinator.async_add_listener(_async_entity_listener))
     _async_entity_listener()
@@ -252,7 +267,12 @@ class AirzoneClimate(AirzoneZoneEntity, ClimateEntity):
         current = HVAC_MODE_LIB_TO_HASS.get(self.get_airzone_value(AZD_MODE))
         if current is not None and current != HVACMode.OFF:
             modes.append(current)
-        self._attr_hvac_modes = modes
+        # hvac_modes is a capability attribute: reassigning an equal list on
+        # every refresh makes Home Assistant re-emit the capabilities for
+        # nothing. ClimateEntity only annotates _attr_hvac_modes, so the first
+        # call (from __init__) has nothing to compare against.
+        if modes != getattr(self, "_attr_hvac_modes", None):
+            self._attr_hvac_modes = modes
 
     def _set_fan_speeds(self) -> None:
         self._attr_supported_features |= ClimateEntityFeature.FAN_MODE
@@ -409,55 +429,37 @@ class AirzoneSystemClimate(AirzoneSystemEntity, ClimateEntity):
 
         self._async_update_attrs()
 
-    def _system_zones(self) -> list[dict[str, Any]]:
-        """Return the data of every zone belonging to this system."""
-        zones = self.coordinator.data.get(AZD_ZONES, {})
-        return [
-            zone for zone in zones.values() if zone.get(AZD_SYSTEM) == self.system_id
-        ]
-
-    def _master_zone(self) -> dict[str, Any] | None:
-        """Return the master zone of the system (fallback: first zone)."""
-        zones = self._system_zones()
-        for zone in zones:
-            if zone.get(AZD_MASTER):
-                return zone
-        return zones[0] if zones else None
-
     def _master_value(self, key: str) -> Any:
         """Return a value from the master zone."""
-        zone = self._master_zone()
+        zone = self.master_zone()
         return zone.get(key) if zone else None
 
-    def _zones_average(self, key: str) -> float | None:
-        """Return the average of a numeric key across all zones."""
-        values = [
-            zone[key] for zone in self._system_zones() if zone.get(key) is not None
-        ]
+    @staticmethod
+    def _zones_average(zones: list[dict[str, Any]], key: str) -> float | None:
+        """Return the average of a numeric key across the given zones."""
+        values = [zone[key] for zone in zones if zone.get(key) is not None]
         if not values:
             return None
         return round(sum(values) / len(values), 1)
 
+    @staticmethod
     def _zones_extreme(
-        self, key: str, func: Callable[[list[float]], float]
+        zones: list[dict[str, Any]], key: str, func: Callable[[list[float]], float]
     ) -> float | None:
-        """Return func (min/max) of a numeric key across all zones that expose it."""
-        values = [
-            zone[key] for zone in self._system_zones() if zone.get(key) is not None
-        ]
+        """Return func (min/max) of a numeric key across zones that expose it."""
+        values = [zone[key] for zone in zones if zone.get(key) is not None]
         return func(values) if values else None
 
-    def _zones_action(self) -> OperationAction | None:
-        """Return the most relevant action across all zones.
+    @staticmethod
+    def _zones_action(zones: list[dict[str, Any]]) -> OperationAction | None:
+        """Return the most relevant action across the given zones.
 
         Any zone actively heating/cooling/drying/running its fan takes
         priority over an idle or off zone, so the global entity reflects
         real system activity instead of only the master zone's own action.
         """
         actions = {
-            zone[AZD_ACTION]
-            for zone in self._system_zones()
-            if zone.get(AZD_ACTION) is not None
+            zone[AZD_ACTION] for zone in zones if zone.get(AZD_ACTION) is not None
         }
         for action in ACTION_PRIORITY:
             if action in actions:
@@ -472,32 +474,13 @@ class AirzoneSystemClimate(AirzoneSystemEntity, ClimateEntity):
         self._speeds_reverse = {v: k for k, v in self._speeds.items()}
         self._attr_fan_modes = list(self._speeds_reverse)
 
-    async def _async_set_zones_params(
-        self, zones: list[dict[str, Any]], params: dict[str, Any]
-    ) -> None:
-        """Send the same HVAC parameters to each given zone (fan-out)."""
-        try:
-            for zone in zones:
-                _params = {
-                    API_SYSTEM_ID: zone[AZD_SYSTEM],
-                    API_ZONE_ID: zone[AZD_ID],
-                    **params,
-                }
-                await self.coordinator.airzone.set_hvac_parameters(_params)
-        except AirzoneError as error:
-            raise HomeAssistantError(
-                f"Failed to set system {self.entity_id}: {error}"
-            ) from error
-
-        self.coordinator.async_set_updated_data(self.coordinator.airzone.data())
-
     async def async_turn_on(self) -> None:
         """Turn all zones on."""
-        await self._async_set_zones_params(self._system_zones(), {API_ON: 1})
+        await self._async_fanout_zone_params(self.system_zones(), {API_ON: 1})
 
     async def async_turn_off(self) -> None:
         """Turn all zones off."""
-        await self._async_set_zones_params(self._system_zones(), {API_ON: 0})
+        await self._async_fanout_zone_params(self.system_zones(), {API_ON: 0})
 
     async def async_set_fan_mode(self, fan_mode: str) -> None:
         """Set fan mode on every zone that supports speeds.
@@ -508,24 +491,24 @@ class AirzoneSystemClimate(AirzoneSystemEntity, ClimateEntity):
         zone's raw numeric speed everywhere.
         """
         try:
-            for zone in self._system_zones():
+            for zone in self.system_zones():
                 speeds = zone.get(AZD_SPEEDS)
                 if speeds is None:
                     continue
-                zone_speeds_reverse = {
-                    v: k for k, v in _build_speed_map(speeds).items()
-                }
-                speed = zone_speeds_reverse.get(fan_mode)
+                speed = _speed_reverse_map(tuple(speeds)).get(fan_mode)
                 if speed is None:
                     # This zone doesn't have a matching speed for the
                     # requested mode (different granularity than the master
                     # zone); leave it at its current speed.
                     continue
+                params = {API_SPEED: speed}
+                if not zone_needs_write(zone, params):
+                    continue
                 await self.coordinator.airzone.set_hvac_parameters(
                     {
                         API_SYSTEM_ID: zone[AZD_SYSTEM],
                         API_ZONE_ID: zone[AZD_ID],
-                        API_SPEED: speed,
+                        **params,
                     }
                 )
         except AirzoneError as error:
@@ -533,23 +516,29 @@ class AirzoneSystemClimate(AirzoneSystemEntity, ClimateEntity):
                 f"Failed to set system {self.entity_id}: {error}"
             ) from error
 
-        self.coordinator.async_set_updated_data(self.coordinator.airzone.data())
+        self.coordinator.async_push_airzone_data()
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """Set hvac mode for all zones."""
+        zones = self.system_zones()
+
         if hvac_mode == HVACMode.OFF:
-            await self._async_set_zones_params(self._system_zones(), {API_ON: 0})
+            await self._async_fanout_zone_params(zones, {API_ON: 0})
             return
 
         mode = HVAC_MODE_HASS_TO_LIB[hvac_mode]
-        # The mode is system-wide and can only be set on the master zone.
-        if mode != self._master_value(AZD_MODE):
-            master = self._master_zone()
-            if master is not None:
-                await self._async_set_zones_params(
-                    [master], {API_MODE: mode, API_ON: 1}
-                )
-        await self._async_set_zones_params(self._system_zones(), {API_ON: 1})
+        # The mode is system-wide and can only be set on the master zone, so
+        # it goes out first, on its own. The master is then excluded from the
+        # turn-on fan-out: it was just written with API_ON, and the zone dicts
+        # here are a snapshot that still shows its previous state.
+        master = self.master_zone()
+        if mode != self._master_value(AZD_MODE) and master is not None:
+            await self._async_fanout_zone_params(
+                [master], {API_MODE: mode, API_ON: 1}, push=False
+            )
+            zones = [zone for zone in zones if zone is not master]
+
+        await self._async_fanout_zone_params(zones, {API_ON: 1})
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
         """Set a common target temperature for all zones."""
@@ -559,10 +548,16 @@ class AirzoneSystemClimate(AirzoneSystemEntity, ClimateEntity):
         if ATTR_TARGET_TEMP_LOW in kwargs and ATTR_TARGET_TEMP_HIGH in kwargs:
             params[API_COOL_SET_POINT] = kwargs[ATTR_TARGET_TEMP_HIGH]
             params[API_HEAT_SET_POINT] = kwargs[ATTR_TARGET_TEMP_LOW]
-        if params:
-            await self._async_set_zones_params(self._system_zones(), params)
 
-        if ATTR_HVAC_MODE in kwargs:
+        set_mode = ATTR_HVAC_MODE in kwargs
+        if params:
+            # When a mode change follows, let it publish the state once at the
+            # end instead of pushing twice for a single service call.
+            await self._async_fanout_zone_params(
+                self.system_zones(), params, push=not set_mode
+            )
+
+        if set_mode:
             await self.async_set_hvac_mode(kwargs[ATTR_HVAC_MODE])
 
     @callback
@@ -583,42 +578,50 @@ class AirzoneSystemClimate(AirzoneSystemEntity, ClimateEntity):
         across zones with different, possibly incompatible speed ranges —
         see async_set_fan_mode) are still derived from the master zone.
         """
-        self._attr_current_temperature = self._zones_average(AZD_TEMP)
-        humidity = self._zones_average(AZD_HUMIDITY)
+        zones = self.system_zones()
+        master = self.master_zone()
+        features = self.supported_features
+
+        self._attr_current_temperature = self._zones_average(zones, AZD_TEMP)
+        humidity = self._zones_average(zones, AZD_HUMIDITY)
         self._attr_current_humidity = (
             int(round(humidity)) if humidity is not None else None
         )
 
-        action = self._zones_action()
+        action = self._zones_action(zones)
         self._attr_hvac_action = (
             HVAC_ACTION_LIB_TO_HASS.get(action) if action is not None else None
         )
 
-        if any(zone.get(AZD_ON) for zone in self._system_zones()):
+        if any(zone.get(AZD_ON) for zone in zones):
             self._attr_hvac_mode = HVAC_MODE_LIB_TO_HASS.get(
-                self._master_value(AZD_MODE)
+                master.get(AZD_MODE) if master else None
             )
         else:
             self._attr_hvac_mode = HVACMode.OFF
 
         # Most restrictive range across zones, so a temperature accepted by
         # this entity is always valid for every zone it fans out to.
-        self._attr_max_temp = self._zones_extreme(AZD_TEMP_MAX, min)
-        self._attr_min_temp = self._zones_extreme(AZD_TEMP_MIN, max)
+        self._attr_max_temp = self._zones_extreme(zones, AZD_TEMP_MAX, min)
+        self._attr_min_temp = self._zones_extreme(zones, AZD_TEMP_MIN, max)
 
-        if self.supported_features & ClimateEntityFeature.FAN_MODE:
-            self._attr_fan_mode = self._speeds.get(self._master_value(AZD_SPEED))
+        if features & ClimateEntityFeature.FAN_MODE:
+            self._attr_fan_mode = self._speeds.get(
+                master.get(AZD_SPEED) if master else None
+            )
 
         if (
-            self.supported_features & ClimateEntityFeature.TARGET_TEMPERATURE_RANGE
+            features & ClimateEntityFeature.TARGET_TEMPERATURE_RANGE
             and self._attr_hvac_mode == HVACMode.HEAT_COOL
         ):
             self._attr_target_temperature_high = self._zones_average(
-                AZD_COOL_TEMP_SET
+                zones, AZD_COOL_TEMP_SET
             )
-            self._attr_target_temperature_low = self._zones_average(AZD_HEAT_TEMP_SET)
+            self._attr_target_temperature_low = self._zones_average(
+                zones, AZD_HEAT_TEMP_SET
+            )
             self._attr_target_temperature = None
         else:
             self._attr_target_temperature_high = None
             self._attr_target_temperature_low = None
-            self._attr_target_temperature = self._zones_average(AZD_TEMP_SET)
+            self._attr_target_temperature = self._zones_average(zones, AZD_TEMP_SET)

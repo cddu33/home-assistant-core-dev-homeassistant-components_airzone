@@ -150,7 +150,8 @@ async def async_setup_entry(
             )
             added_zones.update(new_zones)
 
-        async_add_entities(entities)
+        if entities:
+            async_add_entities(entities)
 
     entry.async_on_unload(coordinator.async_add_listener(_async_entity_listener))
     _async_entity_listener()

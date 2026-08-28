@@ -1,21 +1,33 @@
 """Entity classes for the Airzone integration."""
 
 import logging
-from typing import Any
+from typing import Any, Final
 
 from aioairzone.const import (
+    API_COOL_SET_POINT,
+    API_HEAT_SET_POINT,
+    API_MODE,
+    API_ON,
+    API_SET_POINT,
+    API_SPEED,
     API_SYSTEM_ID,
     API_ZONE_ID,
     AZD_AVAILABLE,
+    AZD_COOL_TEMP_SET,
     AZD_FIRMWARE,
     AZD_FULL_NAME,
+    AZD_HEAT_TEMP_SET,
     AZD_HOT_WATER,
     AZD_ID,
     AZD_MAC,
+    AZD_MODE,
     AZD_MODEL,
     AZD_NAME,
+    AZD_ON,
+    AZD_SPEED,
     AZD_SYSTEM,
     AZD_SYSTEMS,
+    AZD_TEMP_SET,
     AZD_THERMOSTAT_FW,
     AZD_THERMOSTAT_MODEL,
     AZD_WEBSERVER,
@@ -33,6 +45,46 @@ from .const import DOMAIN, MANUFACTURER
 from .coordinator import AirzoneConfigEntry, AirzoneUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
+
+# Write parameter -> the state key holding the value it would set. Used to
+# detect a fan-out write that wouldn't change anything. Only idempotent
+# settings belong here; a parameter absent from this map is always written.
+#
+# API_SLEEP is deliberately absent: it arms a countdown, so re-selecting the
+# value already in effect is a request to restart the timer, not a no-op.
+API_TO_AZD_STATE: Final[dict[str, str]] = {
+    API_COOL_SET_POINT: AZD_COOL_TEMP_SET,
+    API_HEAT_SET_POINT: AZD_HEAT_TEMP_SET,
+    API_MODE: AZD_MODE,
+    API_ON: AZD_ON,
+    API_SET_POINT: AZD_TEMP_SET,
+    API_SPEED: AZD_SPEED,
+}
+
+
+def zone_needs_write(zone: dict[str, Any], params: dict[str, Any]) -> bool:
+    """Return whether a zone actually needs the given parameters written.
+
+    Airzone webservers serialize every HTTP request (aioairzone caps itself at
+    one in-flight request), so a fan-out over N zones costs N round-trips in
+    sequence. Skipping zones already in the requested state is what keeps a
+    system-wide command fast.
+
+    Errs towards writing: an unmapped parameter, or a state key the zone
+    doesn't expose, always counts as needing a write. Comparison is exact --
+    a redundant write is harmless, a wrongly skipped one is not.
+
+    The known state can lag reality if a zone was changed outside Home
+    Assistant (wall thermostat, Airzone app); the window is bounded by the
+    refresh interval.
+    """
+    for key, value in params.items():
+        state_key = API_TO_AZD_STATE.get(key)
+        if state_key is None or state_key not in zone:
+            return True
+        if zone[state_key] != value:
+            return True
+    return False
 
 
 class AirzoneEntity(CoordinatorEntity[AirzoneUpdateCoordinator]):
@@ -83,6 +135,14 @@ class AirzoneSystemEntity(AirzoneEntity):
                 value = system[key]
         return value
 
+    def system_zones(self) -> list[dict[str, Any]]:
+        """Return the data of every zone belonging to this system."""
+        return self.coordinator.system_zones.get(self.system_id, [])
+
+    def master_zone(self) -> dict[str, Any] | None:
+        """Return the master zone of the system (fallback: first zone)."""
+        return self.coordinator.system_masters.get(self.system_id)
+
     async def _async_update_sys_params(self, params: dict[str, Any]) -> None:
         """Send system parameters to API."""
         _params = {
@@ -97,7 +157,40 @@ class AirzoneSystemEntity(AirzoneEntity):
                 f"Failed to set system {self.entity_id}: {error}"
             ) from error
 
-        self.coordinator.async_set_updated_data(self.coordinator.airzone.data())
+        self.coordinator.async_push_airzone_data()
+
+    async def _async_fanout_zone_params(
+        self,
+        zones: list[dict[str, Any]],
+        params: dict[str, Any],
+        *,
+        push: bool = True,
+    ) -> None:
+        """Send the same HVAC parameters to each given zone (fan-out).
+
+        Zones already in the requested state are skipped, see
+        `zone_needs_write`. Set `push=False` when the caller chains several
+        fan-outs for one service call, so the state is published once at the
+        end instead of after each batch.
+        """
+        try:
+            for zone in zones:
+                if not zone_needs_write(zone, params):
+                    continue
+                await self.coordinator.airzone.set_hvac_parameters(
+                    {
+                        API_SYSTEM_ID: zone[AZD_SYSTEM],
+                        API_ZONE_ID: zone[AZD_ID],
+                        **params,
+                    }
+                )
+        except AirzoneError as error:
+            raise HomeAssistantError(
+                f"Failed to set system {self.entity_id}: {error}"
+            ) from error
+
+        if push:
+            self.coordinator.async_push_airzone_data()
 
 
 class AirzoneHotWaterEntity(AirzoneEntity):
@@ -137,7 +230,7 @@ class AirzoneHotWaterEntity(AirzoneEntity):
         except AirzoneError as error:
             raise HomeAssistantError(f"Failed to set DHW: {error}") from error
 
-        self.coordinator.async_set_updated_data(self.coordinator.airzone.data())
+        self.coordinator.async_push_airzone_data()
 
 
 class AirzoneWebServerEntity(AirzoneEntity):
@@ -223,4 +316,4 @@ class AirzoneZoneEntity(AirzoneEntity):
                 f"Failed to set zone {self.entity_id}: {error}"
             ) from error
 
-        self.coordinator.async_set_updated_data(self.coordinator.airzone.data())
+        self.coordinator.async_push_airzone_data()
