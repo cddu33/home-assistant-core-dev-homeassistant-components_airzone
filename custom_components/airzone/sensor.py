@@ -173,7 +173,8 @@ async def async_setup_entry(
             )
             added_zones.update(new_zones)
 
-        async_add_entities(entities)
+        if entities:
+            async_add_entities(entities)
 
     entities: list[AirzoneSensor] = []
 

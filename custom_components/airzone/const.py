@@ -9,7 +9,10 @@ from homeassistant.const import UnitOfTemperature
 DOMAIN: Final = "airzone"
 MANUFACTURER: Final = "Airzone"
 
-AIOAIRZONE_DEVICE_TIMEOUT_SEC: Final = 10
+# One update issues up to 4 serialized HTTP calls (HVAC, then DHW/systems/
+# webserver), each with aioairzone's own 10s per-call timeout, so a 10s budget
+# for the whole cycle could abort it with no single request having timed out.
+AIOAIRZONE_DEVICE_TIMEOUT_SEC: Final = 20
 API_TEMPERATURE_STEP: Final = 0.5
 
 DEFAULT_SCAN_INTERVAL: Final = 60
