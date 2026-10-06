@@ -51,6 +51,16 @@
       }
     },
     "select": {
+      "all_zones_eco_adapt": {
+        "name": "Eco-Adapt (all zones)",
+        "state": {
+          "a": "A",
+          "a_p": "A+",
+          "a_pp": "A++",
+          "manual": "Manual",
+          "off": "Off"
+        }
+      },
       "all_zones_sleep": {
         "name": "Sleep (all zones)",
         "state": {
@@ -101,7 +111,7 @@
           "dry": "Dry",
           "fan": "Fan only",
           "heat": "Heat",
-          "heat_cool": "Heat/cool",
+          "heat_cool": "Heat/Cool",
           "stop": "Stop"
         }
       },
@@ -126,16 +136,6 @@
       }
     },
     "sensor": {
-      "eco_adapt": {
-        "name": "Eco-Adapt",
-        "state": {
-          "a": "A",
-          "a_p": "A+",
-          "a_pp": "A++",
-          "manual": "Manual",
-          "off": "Off"
-        }
-      },
       "power": {
         "name": "Power"
       },

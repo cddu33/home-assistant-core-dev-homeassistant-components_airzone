@@ -98,7 +98,7 @@ class AirzoneWaterHeater(AirzoneHotWaterEntity, WaterHeaterEntity):
         await self._async_update_dhw_params({API_ACS_ON: 0})
 
     async def async_turn_on(self, **kwargs: Any) -> None:
-        """Turn the water heater off."""
+        """Turn the water heater on."""
         await self._async_update_dhw_params({API_ACS_ON: 1})
 
     async def async_set_operation_mode(self, operation_mode: str) -> None:
