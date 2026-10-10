@@ -1,5 +1,5 @@
 {
-  "name": "Android TV Remote (Epson fix)",
+  "name": "Android TV Remote",
   "homeassistant": "2026.1.0",
   "render_readme": true
 }

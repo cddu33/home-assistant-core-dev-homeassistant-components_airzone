@@ -1,4 +1,4 @@
-# Android TV Remote (Epson fix)
+# Android TV Remote (correctif Epson)
 
 Version modifiée de l'intégration officielle **Android TV Remote** de Home Assistant
 (basée sur Home Assistant 2026.9.4), pour les appareils qui passent en boucle de
@@ -35,7 +35,7 @@ identique à l'intégration officielle.
 
 1. HACS → menu ⋮ → **Dépôts personnalisés**.
 2. Ajoutez l'URL de ce dépôt, catégorie **Intégration**.
-3. Installez **Android TV Remote (Epson fix)**, puis redémarrez Home Assistant.
+3. Installez **Android TV Remote**, puis redémarrez Home Assistant.
 
 Pour revenir à l'intégration officielle : désinstallez-la depuis HACS et redémarrez.
 

@@ -1,6 +1,6 @@
 {
   "domain": "androidtv_remote",
-  "name": "Android TV Remote (Epson fix)",
+  "name": "Android TV Remote",
   "codeowners": ["@cddu33"],
   "config_flow": true,
   "documentation": "https://github.com/cddu33/ha-androidtv-remote-epson",
