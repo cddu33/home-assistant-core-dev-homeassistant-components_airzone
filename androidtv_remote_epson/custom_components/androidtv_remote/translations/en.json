@@ -1,0 +1,113 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "Device is already configured",
+      "cannot_connect": "Failed to connect",
+      "reauth_successful": "Re-authentication was successful",
+      "reconfigure_successful": "Reconfiguration was successful",
+      "unique_id_mismatch": "Please ensure you reconfigure against the same device."
+    },
+    "error": {
+      "already_in_progress": "This is already being configured. Finish the existing configuration before starting again.",
+      "cannot_connect": "Failed to connect",
+      "invalid_auth": "Invalid authentication",
+      "unknown": "Unexpected error"
+    },
+    "flow_title": "{name}",
+    "step": {
+      "pair": {
+        "data": {
+          "pin": "PIN code"
+        },
+        "data_description": {
+          "pin": "Pairing code displayed on the Android TV device."
+        },
+        "description": "Enter the pairing code displayed on the Android TV ({name})."
+      },
+      "reauth_confirm": {
+        "description": "You need to pair again with the Android TV ({name}). It will turn on and a pairing code will be displayed on it that you will need to enter in the next screen.",
+        "title": "Authentication expired for {name}"
+      },
+      "reconfigure": {
+        "data": {
+          "host": "Host"
+        },
+        "data_description": {
+          "host": "The hostname or IP address of the Android TV device."
+        },
+        "description": "Update the IP address of this previously configured Android TV device."
+      },
+      "user": {
+        "data": {
+          "host": "Host"
+        },
+        "data_description": {
+          "host": "The hostname or IP address of the Android TV device."
+        },
+        "description": "Enter the IP address of the Android TV you want to add to Home Assistant. It will turn on and a pairing code will be displayed on it that you will need to enter in the next screen."
+      },
+      "zeroconf_confirm": {
+        "description": "Do you want to add the Android TV ({name}) to Home Assistant? It will turn on and a pairing code will be displayed on it that you will need to enter in the next screen.",
+        "title": "Discovered Android TV"
+      }
+    }
+  },
+  "exceptions": {
+    "connection_closed": {
+      "message": "Connection to the Android TV device is closed"
+    },
+    "direction_prefix_with_hold_secs": {
+      "message": "Command \"{command}\" combines a direction prefix with hold_secs; specify only one"
+    },
+    "empty_key_code": {
+      "message": "Command \"{command}\" is missing a key code after the direction prefix"
+    },
+    "invalid_channel": {
+      "message": "Channel must be numeric: {media_id}"
+    },
+    "invalid_media_type": {
+      "message": "Invalid media type: {media_type}"
+    }
+  },
+  "options": {
+    "step": {
+      "apps": {
+        "data": {
+          "app_delete": "Check to delete this application",
+          "app_icon": "Application icon",
+          "app_id": "Application ID",
+          "app_name": "Application name"
+        },
+        "data_description": {
+          "app_delete": "Check this box to delete the application from the list.",
+          "app_icon": "Image URL. From the Play Store app page, right click on the icon and select 'Copy image address' and then paste it here. Alternatively, download the image, upload it under /config/www/ and use the URL /local/filename",
+          "app_id": "E.g. {example_app_id} for {example_app_play_store_url}",
+          "app_name": "Name of the application as you would like it to be displayed in Home Assistant."
+        },
+        "description": "Configure application ID {app_id}",
+        "title": "Configure Android apps"
+      },
+      "init": {
+        "data": {
+          "apps": "Configure applications list",
+          "enable_ime": "Enable IME",
+          "unavailable_grace_period": "Unavailable grace period",
+          "idle_timeout": "Idle timeout"
+        },
+        "data_description": {
+          "apps": "Here you can define the list of applications, specify names and icons that will be displayed in the UI.",
+          "enable_ime": "Enable this option to be able to get the current app name and send text as keyboard input. Disable it for devices that show 'Use keyboard on mobile device screen' instead of the on-screen keyboard.",
+          "unavailable_grace_period": "Seconds the entities keep their last state after the connection is lost before becoming unavailable. Hides short disconnect/reconnect cycles. 0 disables it.",
+          "idle_timeout": "Seconds without any message from the device before the connection is considered lost (16 by default). The largest value among all configured devices is used."
+        }
+      }
+    }
+  },
+  "selector": {
+    "apps": {
+      "options": {
+        "add_new": "Add new"
+      }
+    }
+  }
+}

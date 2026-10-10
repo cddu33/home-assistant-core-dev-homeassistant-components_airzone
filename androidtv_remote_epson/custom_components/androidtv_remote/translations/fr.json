@@ -1,0 +1,113 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "L'appareil est déjà configuré",
+      "cannot_connect": "Échec de la connexion",
+      "reauth_successful": "La ré-authentification a réussi",
+      "reconfigure_successful": "La reconfiguration a réussi",
+      "unique_id_mismatch": "Assurez-vous de reconfigurer le même appareil."
+    },
+    "error": {
+      "already_in_progress": "La configuration est déjà en cours. Terminez-la avant d'en commencer une nouvelle.",
+      "cannot_connect": "Échec de la connexion",
+      "invalid_auth": "Authentification invalide",
+      "unknown": "Erreur inattendue"
+    },
+    "flow_title": "{name}",
+    "step": {
+      "pair": {
+        "data": {
+          "pin": "Code PIN"
+        },
+        "data_description": {
+          "pin": "Code d'appairage affiché sur l'appareil Android TV."
+        },
+        "description": "Saisissez le code d'appairage affiché sur l'Android TV ({name})."
+      },
+      "reauth_confirm": {
+        "description": "Vous devez appairer à nouveau l'Android TV ({name}). Elle va s'allumer et afficher un code d'appairage à saisir à l'écran suivant.",
+        "title": "Authentification expirée pour {name}"
+      },
+      "reconfigure": {
+        "data": {
+          "host": "Hôte"
+        },
+        "data_description": {
+          "host": "Nom d'hôte ou adresse IP de l'appareil Android TV."
+        },
+        "description": "Mettez à jour l'adresse IP de cet appareil Android TV déjà configuré."
+      },
+      "user": {
+        "data": {
+          "host": "Hôte"
+        },
+        "data_description": {
+          "host": "Nom d'hôte ou adresse IP de l'appareil Android TV."
+        },
+        "description": "Saisissez l'adresse IP de l'Android TV à ajouter à Home Assistant. Elle va s'allumer et afficher un code d'appairage à saisir à l'écran suivant."
+      },
+      "zeroconf_confirm": {
+        "description": "Voulez-vous ajouter l'Android TV ({name}) à Home Assistant ? Elle va s'allumer et afficher un code d'appairage à saisir à l'écran suivant.",
+        "title": "Android TV découverte"
+      }
+    }
+  },
+  "exceptions": {
+    "connection_closed": {
+      "message": "La connexion à l'appareil Android TV est fermée"
+    },
+    "direction_prefix_with_hold_secs": {
+      "message": "La commande \"{command}\" combine un préfixe de direction et hold_secs ; n'en indiquez qu'un seul"
+    },
+    "empty_key_code": {
+      "message": "La commande \"{command}\" n'a pas de code de touche après le préfixe de direction"
+    },
+    "invalid_channel": {
+      "message": "La chaîne doit être numérique : {media_id}"
+    },
+    "invalid_media_type": {
+      "message": "Type de média invalide : {media_type}"
+    }
+  },
+  "options": {
+    "step": {
+      "apps": {
+        "data": {
+          "app_delete": "Cocher pour supprimer cette application",
+          "app_icon": "Icône de l'application",
+          "app_id": "ID de l'application",
+          "app_name": "Nom de l'application"
+        },
+        "data_description": {
+          "app_delete": "Cochez cette case pour supprimer l'application de la liste.",
+          "app_icon": "URL de l'image. Sur la page Play Store de l'application, faites un clic droit sur l'icône, choisissez « Copier l'adresse de l'image » et collez-la ici. Vous pouvez aussi télécharger l'image dans /config/www/ et utiliser l'URL /local/nom_du_fichier",
+          "app_id": "Ex. : {example_app_id} pour {example_app_play_store_url}",
+          "app_name": "Nom de l'application tel qu'il sera affiché dans Home Assistant."
+        },
+        "description": "Configurer l'application {app_id}",
+        "title": "Configurer les applications Android"
+      },
+      "init": {
+        "data": {
+          "apps": "Configurer la liste des applications",
+          "enable_ime": "Activer l'IME",
+          "unavailable_grace_period": "Délai avant indisponibilité",
+          "idle_timeout": "Délai d'inactivité"
+        },
+        "data_description": {
+          "apps": "Définissez ici la liste des applications, avec les noms et icônes affichés dans l'interface.",
+          "enable_ime": "Activez cette option pour obtenir le nom de l'application en cours et envoyer du texte au clavier. Désactivez-la pour les appareils qui affichent « Utiliser le clavier de l'appareil mobile » au lieu du clavier à l'écran.",
+          "unavailable_grace_period": "Nombre de secondes pendant lesquelles les entités gardent leur dernier état après une perte de connexion avant de passer en indisponible. Masque les cycles courts de déconnexion/reconnexion. 0 pour désactiver.",
+          "idle_timeout": "Nombre de secondes sans message de l'appareil avant de considérer la connexion comme perdue (16 par défaut). La plus grande valeur parmi tous les appareils configurés est utilisée."
+        }
+      }
+    }
+  },
+  "selector": {
+    "apps": {
+      "options": {
+        "add_new": "Ajouter"
+      }
+    }
+  }
+}
