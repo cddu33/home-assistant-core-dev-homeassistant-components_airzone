@@ -152,5 +152,13 @@
         "name": "Wi-Fi quality"
       }
     }
+  },
+  "exceptions": {
+    "gateway_unreachable": {
+      "message": "The Airzone gateway at {host} has not responded since {since} ({error}). The last known values are kept until it answers again."
+    },
+    "gateway_unreachable_title": {
+      "message": "Airzone gateway unreachable"
+    }
   }
 }

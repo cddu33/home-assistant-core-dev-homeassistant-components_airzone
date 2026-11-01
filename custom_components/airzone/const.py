@@ -17,6 +17,11 @@ API_TEMPERATURE_STEP: Final = 0.5
 
 DEFAULT_SCAN_INTERVAL: Final = 60
 
+# Consecutive failed updates before notifying that the gateway is unreachable
+# (one update every DEFAULT_SCAN_INTERVAL seconds). Entities keep their last
+# known values meanwhile, so a single missed poll goes unnoticed.
+UNREACHABLE_FAILURES_BEFORE_NOTIFY: Final = 2
+
 TEMP_UNIT_LIB_TO_HASS: Final[dict[TemperatureUnit, str]] = {
     TemperatureUnit.CELSIUS: UnitOfTemperature.CELSIUS,
     TemperatureUnit.FAHRENHEIT: UnitOfTemperature.FAHRENHEIT,

@@ -13,6 +13,7 @@ from aioairzone.const import (
 )
 from aioairzone.localapi import AirzoneLocalApi, ConnectionOptions
 
+from homeassistant.components import persistent_notification
 from homeassistant.const import CONF_HOST, CONF_ID, CONF_PORT, Platform
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import (
@@ -92,6 +93,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: AirzoneConfigEntry) -> b
     entry.runtime_data = coordinator
 
     entry.async_on_unload(entry.add_update_listener(_async_options_updated))
+    entry.async_on_unload(
+        lambda: persistent_notification.async_dismiss(hass, coordinator.notification_id)
+    )
 
     device_registry = dr.async_get(hass)
 
