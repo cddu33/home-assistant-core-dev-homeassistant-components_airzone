@@ -152,5 +152,13 @@
         "name": "Qualité Wi-Fi"
       }
     }
+  },
+  "exceptions": {
+    "gateway_unreachable": {
+      "message": "La passerelle Airzone {host} ne répond plus depuis {since} ({error}). Les dernières valeurs connues sont conservées jusqu'à ce qu'elle réponde à nouveau."
+    },
+    "gateway_unreachable_title": {
+      "message": "Passerelle Airzone injoignable"
+    }
   }
 }
