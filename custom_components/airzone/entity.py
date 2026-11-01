@@ -112,14 +112,8 @@ class AirzoneSystemEntity(AirzoneEntity):
         self.system_id = system_data[AZD_ID]
 
         self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, f"{entry.entry_id}_{self.system_id}")},
-            manufacturer=MANUFACTURER,
-            model=self.get_airzone_value(AZD_MODEL),
-            name=f"System {self.system_id}",
-            sw_version=self.get_airzone_value(AZD_FIRMWARE),
+            **coordinator.system_device_info(self.system_id)
         )
-        if AZD_WEBSERVER in self.coordinator.data:
-            self._attr_device_info["via_device"] = (DOMAIN, f"{entry.entry_id}_ws")
         self._attr_unique_id = entry.unique_id or entry.entry_id
 
     @property
@@ -209,9 +203,8 @@ class AirzoneHotWaterEntity(AirzoneEntity):
             manufacturer=MANUFACTURER,
             model="DHW",
             name=self.get_airzone_value(AZD_NAME),
+            **coordinator.via_webserver_device(),
         )
-        if AZD_WEBSERVER in self.coordinator.data:
-            self._attr_device_info["via_device"] = (DOMAIN, f"{entry.entry_id}_ws")
         self._attr_unique_id = entry.unique_id or entry.entry_id
 
     def get_airzone_value(self, key: str) -> Any:
@@ -284,7 +277,7 @@ class AirzoneZoneEntity(AirzoneEntity):
             model=self.get_airzone_value(AZD_THERMOSTAT_MODEL),
             name=zone_data[AZD_NAME],
             sw_version=self.get_airzone_value(AZD_THERMOSTAT_FW),
-            via_device=(DOMAIN, f"{entry.entry_id}_{self.system_id}"),
+            **coordinator.async_via_system_device(self.system_id),
         )
         self._attr_unique_id = entry.unique_id or entry.entry_id
 
