@@ -99,7 +99,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: AirzoneConfigEntry) -> b
     if ws_data is not None:
         mac = ws_data.get(AZD_MAC, "")
 
-        device_registry.async_get_or_create(
+        ws_device = device_registry.async_get_or_create(
             config_entry_id=entry.entry_id,
             connections={(dr.CONNECTION_NETWORK_MAC, mac)},
             identifiers={(DOMAIN, f"{entry.entry_id}_ws")},
@@ -108,6 +108,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: AirzoneConfigEntry) -> b
             name=ws_data.get(AZD_FULL_NAME),
             sw_version=ws_data.get(AZD_FIRMWARE),
         )
+        # Child devices link to the webserver by device registry id.
+        coordinator.webserver_device_id = ws_device.id
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
